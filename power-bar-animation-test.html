@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Power Bar Animation Test</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      gap: 30px;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+      margin: 0;
+      align-items: flex-start;
+    }
+
+    #canvas-container {
+      position: relative;
+      background: #000;
+      border: 2px solid #444;
+      display: inline-block;
+      width: 400px;
+      height: 600px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 300px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-direction: column;
+    }
+
+    button {
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+
+    #blueBtn {
+      background: #0099ff;
+      color: #fff;
+    }
+
+    #blueBtn:hover:not(:disabled) {
+      background: #0077dd;
+      transform: scale(1.05);
+    }
+
+    #redBtn {
+      background: #ff3333;
+      color: #fff;
+    }
+
+    #redBtn:hover:not(:disabled) {
+      background: #dd0000;
+      transform: scale(1.05);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: scale(1);
+    }
+
+    .stats {
+      background: #222;
+      border: 1px solid #555;
+      padding: 15px;
+      border-radius: 5px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .stat-label {
+      font-weight: 600;
+      color: #0f0;
+    }
+
+    .stat-value {
+      font-weight: 700;
+    }
+
+    .info-box {
+      background: #2a2a1a;
+      border-left: 3px solid #ff0;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      border-radius: 3px;
+      color: #aaa;
+    }
+
+    #imageInput {
+      padding: 8px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    #imageInput::file-selector-button {
+      padding: 6px 12px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      border-radius: 3px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <canvas id="test-canvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <div>
+      <h2>Power Bar Animation Test</h2>
+      <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">30 rows × 2 columns</p>
+    </div>
+
+    <div class="button-group">
+      <button id="blueBtn">+ Blue Cell (Fill Up)</button>
+      <button id="redBtn">+ Red Cell (Fill Down)</button>
+    </div>
+
+    <button id="resetBtn" style="background: #666; color: #fff;">Reset All</button>
+
+    <div class="stats">
+      <div class="stat-line">
+        <span class="stat-label">Blue Filled:</span>
+        <span class="stat-value" id="blueFilled">0/30</span>
+      </div>
+      <div class="stat-line">
+        <span class="stat-label">Red Filled:</span>
+        <span class="stat-value" id="redFilled">0/30</span>
+      </div>
+    </div>
+
+    <div class="info-box">
+      💡 <strong>Test Instructions:</strong><br>
+      • Blue cells fill from BOTTOM (row 29 → 0)<br>
+      • Red cells fill from TOP (row 0 → 29)<br>
+      • Each click adds one row<br>
+      • Check sizing and alignment of both cell types
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('test-canvas');
+    const ctx = canvas.getContext('2d');
+    const blueBtn = document.getElementById('blueBtn');
+    const redBtn = document.getElementById('redBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const blueFilled = document.getElementById('blueFilled');
+    const redFilled = document.getElementById('redFilled');
+
+    // Power bar configuration from grid tool
+    const CONFIG = {
+      cellHeight: 8,
+      cellWidth: 9,
+      columnGap: 7,
+      gridOffsetX: 282,
+      gridOffsetY: 52,
+      totalRows: 30,
+      totalColumns: 2,
+    };
+
+    // Canvas display scale (for readability)
+    const SCALE = 2;
+
+    let blueCellImg = null;
+    let redCellImg = null;
+    let blueCount = 0;
+    let redCount = 0;
+
+    // Set canvas size
+    canvas.width = 400;
+    canvas.height = 600;
+
+    // Load cell images
+    function loadImages() {
+      const blueImg = new Image();
+      blueImg.onload = () => {
+        blueCellImg = blueImg;
+        console.log('Blue cells loaded:', blueImg.width, 'x', blueImg.height);
+        redraw();
+      };
+      blueImg.onerror = () => {
+        console.warn('Failed to load blue cells, using placeholder');
+        blueCellImg = 'placeholder';
+        redraw();
+      };
+      blueImg.src = 'assets/images/Blue Cells Bigger.png';
+
+      const redImg = new Image();
+      redImg.onload = () => {
+        redCellImg = redImg;
+        console.log('Red cells loaded:', redImg.width, 'x', redImg.height);
+        redraw();
+      };
+      redImg.onerror = () => {
+        console.warn('Failed to load red cells, using placeholder');
+        redCellImg = 'placeholder';
+        redraw();
+      };
+      redImg.src = 'assets/images/Red Cells.png';
+    }
+
+    function getCellPosition(row, column) {
+      const y = CONFIG.gridOffsetY + row * CONFIG.cellHeight;
+      let x;
+      if (column === 0) {
+        x = CONFIG.gridOffsetX;
+      } else {
+        x = CONFIG.gridOffsetX + CONFIG.cellWidth + CONFIG.columnGap;
+      }
+      return { x: Math.round(x * SCALE), y: Math.round(y * SCALE) };
+    }
+
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw background
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw grid border
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 2;
+      const topLeftPos = getCellPosition(0, 0);
+      const bottomRightPos = getCellPosition(CONFIG.totalRows - 1, 1);
+      const cellW = Math.round((CONFIG.cellWidth * 2 + CONFIG.columnGap) * SCALE);
+      const cellH = Math.round(CONFIG.cellHeight * CONFIG.totalRows * SCALE);
+      ctx.strokeRect(topLeftPos.x - 2, topLeftPos.y - 2, cellW + 4, cellH + 4);
+
+      // Draw grid lines (faint)
+      ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+      ctx.lineWidth = 1;
+      for (let row = 0; row < CONFIG.totalRows; row++) {
+        const pos = getCellPosition(row, 0);
+        for (let col = 0; col < CONFIG.totalColumns; col++) {
+          const cellPos = getCellPosition(row, col);
+          const w = Math.round(CONFIG.cellWidth * SCALE);
+          const h = Math.round(CONFIG.cellHeight * SCALE);
+          ctx.strokeRect(cellPos.x, cellPos.y, w, h);
+        }
+      }
+
+      // Draw blue cells (from bottom up)
+      const cellW = Math.round((CONFIG.cellWidth * 2 + CONFIG.columnGap) * SCALE);
+      const cellH = Math.round(CONFIG.cellHeight * SCALE);
+
+      for (let i = 0; i < blueCount; i++) {
+        const row = CONFIG.totalRows - 1 - i;
+        const pos = getCellPosition(row, 0);
+
+        if (blueCellImg && blueCellImg !== 'placeholder') {
+          ctx.drawImage(blueCellImg, pos.x, pos.y, cellW, cellH);
+        } else {
+          // Draw blue placeholder
+          ctx.fillStyle = '#0099ff';
+          ctx.fillRect(pos.x, pos.y, cellW, cellH);
+          ctx.strokeStyle = '#00ccff';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(pos.x, pos.y, cellW, cellH);
+        }
+      }
+
+      // Draw red cells (from top down)
+      for (let i = 0; i < redCount; i++) {
+        const row = i;
+        const pos = getCellPosition(row, 0);
+
+        if (redCellImg && redCellImg !== 'placeholder') {
+          ctx.drawImage(redCellImg, pos.x, pos.y, cellW, cellH);
+        } else {
+          // Draw red placeholder
+          ctx.fillStyle = '#ff3333';
+          ctx.fillRect(pos.x, pos.y, cellW, cellH);
+          ctx.strokeStyle = '#ff6666';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(pos.x, pos.y, cellW, cellH);
+        }
+      }
+
+      // Update stats
+      blueFilled.textContent = `${blueCount}/30`;
+      redFilled.textContent = `${redCount}/30`;
+
+      // Disable buttons if full
+      const total = blueCount + redCount;
+      blueBtn.disabled = total >= CONFIG.totalRows;
+      redBtn.disabled = total >= CONFIG.totalRows;
+    }
+
+    blueBtn.addEventListener('click', () => {
+      if (blueCount + redCount < CONFIG.totalRows) {
+        blueCount++;
+        redraw();
+      }
+    });
+
+    redBtn.addEventListener('click', () => {
+      if (blueCount + redCount < CONFIG.totalRows) {
+        redCount++;
+        redraw();
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      blueCount = 0;
+      redCount = 0;
+      redraw();
+    });
+
+    loadImages();
+  </script>
+</body>
+</html>

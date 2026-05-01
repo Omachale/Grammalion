@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Phaser Game Dev Server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 8080
+    }
+  ]
+}

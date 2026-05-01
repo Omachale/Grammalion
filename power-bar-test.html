@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Power Bar Test Prototype</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      gap: 30px;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+      margin: 0;
+      align-items: flex-start;
+    }
+
+    #canvas-container {
+      position: relative;
+      background: #000;
+      border: 2px solid #444;
+      display: inline-block;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 300px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      flex: 1;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+
+    #correctBtn {
+      background: #0099ff;
+      color: #fff;
+    }
+
+    #correctBtn:hover {
+      background: #0077dd;
+      transform: scale(1.05);
+    }
+
+    #incorrectBtn {
+      background: #ff3333;
+      color: #fff;
+    }
+
+    #incorrectBtn:hover {
+      background: #dd0000;
+      transform: scale(1.05);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: scale(1);
+    }
+
+    .stats {
+      background: #222;
+      border: 1px solid #555;
+      padding: 15px;
+      border-radius: 5px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .stat-label {
+      font-weight: 600;
+      color: #0f0;
+    }
+
+    .stat-value {
+      font-weight: 700;
+    }
+
+    .progress-bar {
+      background: #333;
+      border: 1px solid #555;
+      height: 20px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #000;
+      transition: width 0.3s;
+    }
+
+    .progress-fill.blue {
+      background: #0099ff;
+    }
+
+    .progress-fill.red {
+      background: #ff3333;
+    }
+
+    .info-box {
+      background: #2a2a1a;
+      border-left: 3px solid #ff0;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      border-radius: 3px;
+      color: #aaa;
+    }
+
+    #imageInput {
+      padding: 8px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    #imageInput::file-selector-button {
+      padding: 6px 12px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      border-radius: 3px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+
+    #imageInput::file-selector-button:hover {
+      background: #0d0;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <canvas id="test-canvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <div>
+      <h2>Power Bar Test</h2>
+      <p style="margin: 5px 0 0 0; font-size: 12px; color: #888;">Click buttons to fill cells</p>
+    </div>
+
+    <div>
+      <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 8px;">Load Image:</label>
+      <input type="file" id="imageInput" accept="image/*">
+    </div>
+
+    <div class="button-group">
+      <button id="correctBtn">✓ Correct</button>
+      <button id="incorrectBtn">✗ Incorrect</button>
+    </div>
+
+    <button id="resetBtn" style="background: #666; color: #fff;">Reset All</button>
+
+    <div class="stats">
+      <div class="stat-line">
+        <span class="stat-label">Correct:</span>
+        <span class="stat-value" id="correctCount">0</span>
+      </div>
+      <div class="stat-line">
+        <span class="stat-label">Incorrect:</span>
+        <span class="stat-value" id="incorrectCount">0</span>
+      </div>
+      <div class="stat-line">
+        <span class="stat-label">Progress:</span>
+        <span class="stat-value" id="progressPercent">0%</span>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <div style="font-size: 11px; color: #888; margin-bottom: 4px;">FILLED:</div>
+        <div class="progress-bar">
+          <div class="progress-fill blue" id="blueFill" style="width: 0%;">0</div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill red" id="redFill" style="width: 0%;">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      💡 <strong>How it works:</strong><br>
+      • Click "Correct" → fills cells from BOTTOM (blue)<br>
+      • Click "Incorrect" → fills cells from TOP (red)<br>
+      • Each click fills one row (both L+R columns)<br>
+      • Verify positioning is accurate
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('test-canvas');
+    const ctx = canvas.getContext('2d');
+    const imageInput = document.getElementById('imageInput');
+    const correctBtn = document.getElementById('correctBtn');
+    const incorrectBtn = document.getElementById('incorrectBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const correctCountDisplay = document.getElementById('correctCount');
+    const incorrectCountDisplay = document.getElementById('incorrectCount');
+    const progressPercentDisplay = document.getElementById('progressPercent');
+    const blueFill = document.getElementById('blueFill');
+    const redFill = document.getElementById('redFill');
+
+    // Power bar configuration from grid tool
+    const CONFIG = {
+      cellHeight: 8,
+      cellWidth: 9,
+      columnGap: 7,
+      gridOffsetX: 282,
+      gridOffsetY: 52,
+      totalRows: 30,
+      totalColumns: 2,
+    };
+
+    let image = null;
+    let blueCellImg = null;
+    let redCellImg = null;
+    let correctFilled = 0;  // Filled from bottom (0-29)
+    let incorrectFilled = 0; // Filled from top (0-29)
+
+    // Load cell images
+    const blueImg = new Image();
+    blueImg.onload = () => { blueCellImg = blueImg; console.log('Blue cells loaded'); };
+    blueImg.onerror = () => { console.log('Blue cells not available'); };
+    blueImg.src = 'src/assets/images/Blue Cells Bigger.png';
+
+    const redImg = new Image();
+    redImg.onload = () => { redCellImg = redImg; console.log('Red cells loaded'); };
+    redImg.onerror = () => { console.log('Red cells not available'); };
+    redImg.src = 'src/assets/images/Red Cells.png';
+
+    // Image loading
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        image = new Image();
+        image.onload = () => {
+          canvas.width = image.width;
+          canvas.height = image.height;
+          redraw();
+        };
+        image.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function getCellPosition(row, column) {
+      const y = CONFIG.gridOffsetY + row * CONFIG.cellHeight;
+      let x;
+      if (column === 0) {
+        x = CONFIG.gridOffsetX;
+      } else {
+        x = CONFIG.gridOffsetX + CONFIG.cellWidth + CONFIG.columnGap;
+      }
+      return { x, y };
+    }
+
+    function redraw() {
+      if (!image) {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 0, canvas.width || 800, canvas.height || 600);
+        ctx.fillStyle = '#888';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Load an image to start', (canvas.width || 800) / 2, (canvas.height || 600) / 2);
+        return;
+      }
+
+      // Draw image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0);
+
+      // Draw grid lines (faint)
+      ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)';
+      ctx.lineWidth = 1;
+      for (let row = 0; row < CONFIG.totalRows; row++) {
+        const pos = getCellPosition(row, 0);
+        for (let col = 0; col < CONFIG.totalColumns; col++) {
+          const cellPos = getCellPosition(row, col);
+          ctx.strokeRect(
+            cellPos.x,
+            cellPos.y,
+            CONFIG.cellWidth,
+            CONFIG.cellHeight
+          );
+        }
+      }
+
+      // Draw filled cells - CORRECT (blue, from bottom)
+      const doubleCellW = CONFIG.cellWidth * 2 + CONFIG.columnGap;
+      for (let i = 0; i < correctFilled; i++) {
+        const row = CONFIG.totalRows - 1 - i; // Fill from bottom up
+        const pos = getCellPosition(row, 0);
+        if (blueCellImg && blueCellImg.complete) {
+          // Draw actual cell image
+          ctx.drawImage(blueCellImg, pos.x, pos.y, doubleCellW, CONFIG.cellHeight);
+        } else {
+          // Fallback to colored rectangle
+          ctx.fillStyle = 'rgba(0, 153, 255, 0.7)';
+          ctx.fillRect(pos.x, pos.y, doubleCellW, CONFIG.cellHeight);
+        }
+      }
+
+      // Draw filled cells - INCORRECT (red, from top)
+      for (let i = 0; i < incorrectFilled; i++) {
+        const row = i; // Fill from top down
+        const pos = getCellPosition(row, 0);
+        if (redCellImg && redCellImg.complete) {
+          // Draw actual cell image
+          ctx.drawImage(redCellImg, pos.x, pos.y, doubleCellW, CONFIG.cellHeight);
+        } else {
+          // Fallback to colored rectangle
+          ctx.fillStyle = 'rgba(255, 51, 51, 0.7)';
+          ctx.fillRect(pos.x, pos.y, doubleCellW, CONFIG.cellHeight);
+        }
+      }
+
+      // Draw border around power bar area
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 2;
+      const topLeftPos = getCellPosition(0, 0);
+      const bottomRightPos = getCellPosition(CONFIG.totalRows - 1, 1);
+      ctx.strokeRect(
+        topLeftPos.x - 2,
+        topLeftPos.y - 2,
+        CONFIG.cellWidth * 2 + CONFIG.columnGap + 4,
+        CONFIG.cellHeight * CONFIG.totalRows + 4
+      );
+    }
+
+    function updateStats() {
+      const total = correctFilled + incorrectFilled;
+      const progressPercent = Math.round((total / CONFIG.totalRows) * 100);
+
+      correctCountDisplay.textContent = correctFilled;
+      incorrectCountDisplay.textContent = incorrectFilled;
+      progressPercentDisplay.textContent = `${progressPercent}%`;
+
+      const bluePercent = (correctFilled / CONFIG.totalRows) * 100;
+      const redPercent = (incorrectFilled / CONFIG.totalRows) * 100;
+
+      blueFill.style.width = bluePercent + '%';
+      blueFill.textContent = correctFilled > 0 ? correctFilled : '';
+
+      redFill.style.width = redPercent + '%';
+      redFill.textContent = incorrectFilled > 0 ? incorrectFilled : '';
+
+      // Disable buttons if all cells filled
+      correctBtn.disabled = total >= CONFIG.totalRows;
+      incorrectBtn.disabled = total >= CONFIG.totalRows;
+    }
+
+    correctBtn.addEventListener('click', () => {
+      if (correctFilled + incorrectFilled < CONFIG.totalRows) {
+        correctFilled++;
+        redraw();
+        updateStats();
+      }
+    });
+
+    incorrectBtn.addEventListener('click', () => {
+      if (correctFilled + incorrectFilled < CONFIG.totalRows) {
+        incorrectFilled++;
+        redraw();
+        updateStats();
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      correctFilled = 0;
+      incorrectFilled = 0;
+      redraw();
+      updateStats();
+    });
+
+    // Initialize
+    updateStats();
+  </script>
+</body>
+</html>

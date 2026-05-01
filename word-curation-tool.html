@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grammalion Word Curation Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 95vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 24px;
+      border-bottom: 2px solid #555;
+    }
+
+    header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .controls {
+      background: #f8f9fa;
+      padding: 16px 24px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .controls label {
+      font-weight: 600;
+      color: #555;
+    }
+
+    .controls input[type="file"] {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .controls button {
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .controls button:hover {
+      background: #5568d3;
+    }
+
+    .controls button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .open-file-btn {
+      background: #4caf50;
+    }
+
+    .open-file-btn:hover {
+      background: #45a049;
+    }
+
+    .status {
+      padding: 6px 12px;
+      background: #e8f5e9;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #2e7d32;
+      font-weight: 600;
+    }
+
+    .status.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .main-content {
+      display: flex;
+      flex: 1 1 0;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: #f5f5f5;
+      border-right: 1px solid #e0e0e0;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .sidebar-title {
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .base-word-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .base-word-btn {
+      padding: 10px 12px;
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .base-word-btn:hover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .base-word-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .editor {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .editor-header {
+      margin-bottom: 20px;
+    }
+
+    .editor-header h2 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .editor-header p {
+      font-size: 13px;
+      color: #999;
+    }
+
+    .editor-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .editor-body-content {
+      display: flex;
+      gap: 20px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .editor-controls {
+      flex: 0 0 auto;
+      width: 100%;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .word-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .word-column-title {
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .word-list {
+      flex: 1;
+      background: #fafafa;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-content: flex-start;
+    }
+
+    .word-list.rejected {
+      background: #fff3e0;
+      border-color: #ffe0b2;
+    }
+
+    .word-tag {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .word-tag:hover {
+      background: #f0f0f0;
+      border-color: #999;
+    }
+
+    .word-list.rejected .word-tag {
+      background: #ffb74d;
+      color: white;
+      border-color: #ff9800;
+    }
+
+    .word-list.rejected .word-tag:hover {
+      background: #ff9800;
+      border-color: #f57f17;
+    }
+
+    .empty-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #999;
+      text-align: center;
+    }
+
+    .footer {
+      background: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+      padding: 16px 24px;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      flex: 0 0 auto;
+      position: sticky;
+      bottom: 0;
+      z-index: 100;
+    }
+
+    .footer button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .footer button.cancel {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .footer button.cancel:hover {
+      background: #d0d0d0;
+    }
+
+    .footer button.confirm {
+      background: #4caf50;
+      color: white;
+    }
+
+    .footer button.confirm:hover {
+      background: #45a049;
+    }
+
+    .footer button.export {
+      background: #2196f3;
+      color: white;
+    }
+
+    .footer button.export:hover {
+      background: #0b7dda;
+    }
+
+    .footer button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 1200px) {
+      .base-word-list {
+        grid-template-columns: 1fr;
+      }
+
+      .editor-body {
+        flex-direction: column;
+      }
+
+      .word-column {
+        min-height: 250px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+        max-height: 200px;
+      }
+
+      .base-word-list {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Word Curation Tool</h1>
+      <p>Manage Grammalion word sets — load, review, filter, and export</p>
+    </header>
+
+    <div class="controls">
+      <div id="file-controls">
+        <button id="open-file-btn" class="open-file-btn">Open wordsets.json</button>
+        <button id="load-dict-btn" class="open-file-btn" style="background: #ff9800; display: none;">Load Dictionary</button>
+        <button id="gen-5-letter-btn" class="open-file-btn" style="background: #4caf50; display: none;">Generate New 5-Letter Set</button>
+        <button id="gen-6-letter-btn" class="open-file-btn" style="background: #4caf50; display: none;">Generate New 6-Letter Set</button>
+      </div>
+      <input type="file" id="file-fallback" accept=".json" style="display: none;" />
+      <input type="file" id="dict-fallback" accept=".txt" style="display: none;" />
+      <div class="status" id="status" style="display: none;"></div>
+    </div>
+
+    <div class="main-content" id="main-content" style="display: none;">
+      <div class="sidebar">
+        <div class="sidebar-title">Base Words</div>
+        <div class="base-word-list" id="base-word-list"></div>
+      </div>
+
+      <div class="editor">
+        <div class="editor-header">
+          <h2 id="editor-title">Select a word set to begin</h2>
+          <p id="editor-subtitle"></p>
+        </div>
+
+        <div class="editor-body" id="editor-body">
+          <div class="empty-state">
+            Load a wordsets.json file and select a base word to start curating.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button class="cancel" id="reset-btn" style="display: none;">Reset</button>
+      <button class="confirm" id="confirm-btn" style="display: none;">Confirm Changes</button>
+      <button class="confirm" id="confirm-new-set-btn" style="display: none;">Add This Set to wordsets.json</button>
+      <button class="export" id="save-btn" style="display: none;">Save to wordsets.json</button>
+    </div>
+  </div>
+
+  <script>
+    let wordsets = null;
+    let currentSetType = null;
+    let currentIndex = null;
+    let changes = {};
+    let fileHandle = null;
+    let dictionary = null;
+    const supportsFileSystemAPI = typeof window.showOpenFilePicker === 'function';
+
+    const openFileBtn = document.getElementById('open-file-btn');
+    const loadDictBtn = document.getElementById('load-dict-btn');
+    const gen5LetterBtn = document.getElementById('gen-5-letter-btn');
+    const gen6LetterBtn = document.getElementById('gen-6-letter-btn');
+    const fileFallback = document.getElementById('file-fallback');
+    const dictFallback = document.getElementById('dict-fallback');
+    const statusEl = document.getElementById('status');
+    const mainContent = document.getElementById('main-content');
+    const baseWordList = document.getElementById('base-word-list');
+    const editorTitle = document.getElementById('editor-title');
+    const editorSubtitle = document.getElementById('editor-subtitle');
+    const editorBody = document.getElementById('editor-body');
+    const resetBtn = document.getElementById('reset-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const confirmBtn = document.getElementById('confirm-btn');
+    const confirmNewSetBtn = document.getElementById('confirm-new-set-btn');
+
+    openFileBtn.addEventListener('click', handleOpenFile);
+    loadDictBtn.addEventListener('click', handleLoadDictionary);
+    gen5LetterBtn.addEventListener('click', () => handleGenerateNewSet(5));
+    gen6LetterBtn.addEventListener('click', () => handleGenerateNewSet(6));
+    fileFallback.addEventListener('change', handleFileFallback);
+    dictFallback.addEventListener('change', handleDictFallback);
+    resetBtn.addEventListener('click', handleReset);
+    saveBtn.addEventListener('click', handleSave);
+    confirmBtn.addEventListener('click', handleConfirm);
+    confirmNewSetBtn.addEventListener('click', handleConfirm);
+
+    // Auto-load dictionary and wordsets from localStorage on page load
+    loadDictionaryFromStorage();
+    loadWordsetsFromStorage();
+
+    function showStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.display = 'block';
+      statusEl.className = isError ? 'status error' : 'status';
+    }
+
+    async function handleOpenFile() {
+      if (!supportsFileSystemAPI) {
+        // Fallback: use file input
+        fileFallback.click();
+        return;
+      }
+
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [
+            {
+              description: 'JSON Files',
+              accept: { 'application/json': ['.json'] }
+            }
+          ],
+          suggestedName: 'wordsets.json'
+        });
+
+        // Check permission
+        if (await handle.queryPermission({ mode: 'read' }) === 'denied') {
+          if (await handle.requestPermission({ mode: 'read' }) === 'denied') {
+            showStatus('Read permission denied', true);
+            return;
+          }
+        }
+
+        // Request write permission for later
+        if (await handle.queryPermission({ mode: 'readwrite' }) === 'denied') {
+          await handle.requestPermission({ mode: 'readwrite' });
+        }
+
+        // Read the file
+        const file = await handle.getFile();
+        const content = await file.text();
+
+        try {
+          wordsets = JSON.parse(content);
+          fileHandle = handle;
+          changes = {};
+          currentSetType = null;
+          currentIndex = null;
+          // Save to localStorage
+          localStorage.setItem('grammalion_wordsets', JSON.stringify(wordsets));
+          localStorage.setItem('grammalion_wordsets_name', file.name);
+          populateBaseWords();
+          mainContent.style.display = 'flex';
+          loadDictBtn.style.display = 'inline-block';
+          gen5LetterBtn.style.display = 'inline-block';
+          gen6LetterBtn.style.display = 'inline-block';
+          showStatus(
+            `Opened ${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length} word sets from ${file.name}`
+          );
+          resetBtn.style.display = 'inline-block';
+          saveBtn.style.display = 'inline-block';
+        } catch (err) {
+          showStatus(`Error parsing JSON: ${err.message}`, true);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          showStatus(`Error opening file: ${err.message}`, true);
+        }
+      }
+    }
+
+    function handleFileFallback(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          wordsets = JSON.parse(event.target.result);
+          fileHandle = null; // No file handle in fallback mode
+          changes = {};
+          currentSetType = null;
+          currentIndex = null;
+          // Save to localStorage
+          localStorage.setItem('grammalion_wordsets', JSON.stringify(wordsets));
+          localStorage.setItem('grammalion_wordsets_name', file.name);
+          populateBaseWords();
+          mainContent.style.display = 'flex';
+          loadDictBtn.style.display = 'inline-block';
+          gen5LetterBtn.style.display = 'inline-block';
+          gen6LetterBtn.style.display = 'inline-block';
+          showStatus(
+            `Opened ${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length} word sets from ${file.name} (fallback mode — export to save)`
+          );
+          resetBtn.style.display = 'inline-block';
+          saveBtn.style.display = 'inline-block';
+        } catch (err) {
+          showStatus(`Error parsing JSON: ${err.message}`, true);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    async function handleLoadDictionary() {
+      if (!supportsFileSystemAPI) {
+        dictFallback.click();
+        return;
+      }
+
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [
+            {
+              description: 'Text Files',
+              accept: { 'text/plain': ['.txt'] }
+            }
+          ],
+          suggestedName: 'Dictionary.txt'
+        });
+
+        if (await handle.queryPermission({ mode: 'read' }) === 'denied') {
+          if (await handle.requestPermission({ mode: 'read' }) === 'denied') {
+            showStatus('Read permission denied', true);
+            return;
+          }
+        }
+
+        const file = await handle.getFile();
+        const content = await file.text();
+        loadDictionaryFromText(content, file.name);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          showStatus(`Error loading dictionary: ${err.message}`, true);
+        }
+      }
+    }
+
+    function handleDictFallback(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        loadDictionaryFromText(event.target.result, file.name);
+      };
+      reader.readAsText(file);
+    }
+
+    function loadDictionaryFromText(content, fileName) {
+      try {
+        const lines = content.split('\n').map(line => line.trim().toLowerCase()).filter(line => line.length >= 3);
+        dictionary = new Set(lines);
+        showStatus(`Loaded ${dictionary.size} words from ${fileName}`);
+        loadDictBtn.textContent = `✓ Dictionary (${dictionary.size} words)`;
+        loadDictBtn.style.background = '#4caf50';
+        // Save to localStorage
+        localStorage.setItem('grammalion_dictionary', JSON.stringify(Array.from(dictionary)));
+        localStorage.setItem('grammalion_dictionary_name', fileName);
+      } catch (err) {
+        showStatus(`Error parsing dictionary: ${err.message}`, true);
+      }
+    }
+
+    function loadDictionaryFromStorage() {
+      try {
+        const stored = localStorage.getItem('grammalion_dictionary');
+        const storedName = localStorage.getItem('grammalion_dictionary_name');
+        if (stored) {
+          dictionary = new Set(JSON.parse(stored));
+          loadDictBtn.textContent = `✓ Dictionary (${dictionary.size} words)`;
+          loadDictBtn.style.background = '#4caf50';
+          showStatus(`Auto-loaded dictionary: ${storedName || 'Unknown'} (${dictionary.size} words)`);
+        }
+      } catch (err) {
+        console.error('Failed to load dictionary from storage:', err);
+      }
+    }
+
+    function loadWordsetsFromStorage() {
+      try {
+        const stored = localStorage.getItem('grammalion_wordsets');
+        const storedName = localStorage.getItem('grammalion_wordsets_name');
+        if (stored) {
+          wordsets = JSON.parse(stored);
+          populateBaseWords();
+          mainContent.style.display = 'flex';
+          loadDictBtn.style.display = 'inline-block';
+          gen5LetterBtn.style.display = 'inline-block';
+          gen6LetterBtn.style.display = 'inline-block';
+          resetBtn.style.display = 'inline-block';
+          saveBtn.style.display = 'inline-block';
+          showStatus(`Auto-loaded wordsets from: ${storedName || 'Unknown'} (${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length} sets)`);
+        }
+      } catch (err) {
+        console.error('Failed to load wordsets from storage:', err);
+      }
+    }
+
+    function checkForAnagramConflicts(words) {
+      const conflicts = [];
+      const canonicalForms = {};
+
+      words.forEach(word => {
+        const canonical = word.toUpperCase().split('').sort().join('');
+        const length = word.length;
+        const key = `${length}_${canonical}`;
+
+        if (canonicalForms[key]) {
+          conflicts.push({ word1: canonicalForms[key], word2: word });
+        } else {
+          canonicalForms[key] = word;
+        }
+      });
+
+      return conflicts;
+    }
+
+    function showRandomWordsModal(desiredLength) {
+      if (!dictionary) {
+        alert('Load a dictionary first.');
+        return;
+      }
+
+      // Filter dictionary for words of desired length
+      const wordsOfLength = Array.from(dictionary).filter(w => w.length === desiredLength);
+
+      if (wordsOfLength.length === 0) {
+        showStatus(`No ${desiredLength}-letter words found in dictionary`, true);
+        return;
+      }
+
+      // Pick 5 random words
+      const randomWords = [];
+      const shuffled = wordsOfLength.sort(() => Math.random() - 0.5);
+      for (let i = 0; i < Math.min(5, shuffled.length); i++) {
+        randomWords.push(shuffled[i].toUpperCase());
+      }
+
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      `;
+
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 500px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      `;
+
+      content.innerHTML = `
+        <h2 style="margin-bottom: 16px;">Random ${desiredLength}-Letter Words</h2>
+        <p style="color: #666; margin-bottom: 16px;">Selected 5 random words from ${wordsOfLength.length} available</p>
+        <div id="random-word-list" style="
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 20px;
+          padding: 12px;
+          background: #f5f5f5;
+          border-radius: 6px;
+        "></div>
+        <div style="display: flex; gap: 12px;">
+          <button id="regenerate-btn" style="
+            flex: 1;
+            padding: 10px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+          ">Generate Different 5</button>
+          <button id="add-all-random-btn" style="
+            flex: 1;
+            padding: 10px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+          ">Add All 5</button>
+          <button id="close-random-btn" style="
+            flex: 1;
+            padding: 10px;
+            background: #999;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+          ">Close</button>
+        </div>
+      `;
+
+      const randomWordList = content.querySelector('#random-word-list');
+      randomWords.forEach(word => {
+        const tag = document.createElement('span');
+        tag.className = 'word-tag';
+        tag.textContent = word;
+        tag.style.cursor = 'pointer';
+        tag.title = 'Click to add';
+        tag.onclick = () => {
+          // Add this word to active words
+          const set = wordsets[currentSetType][currentIndex];
+          if (!set.words.includes(word)) {
+            if (Array.isArray(set.words)) {
+              set.words.push(word);
+            } else {
+              set.words = Array.from(set.words);
+              set.words.push(word);
+            }
+          }
+          tag.style.opacity = '0.5';
+          tag.style.textDecoration = 'line-through';
+        };
+        randomWordList.appendChild(tag);
+      });
+
+      content.querySelector('#regenerate-btn').onclick = () => {
+        document.body.removeChild(modal);
+        showRandomWordsModal(desiredLength);
+      };
+
+      content.querySelector('#add-all-random-btn').onclick = () => {
+        const set = wordsets[currentSetType][currentIndex];
+        const existing = Array.isArray(set.words) ? set.words : Array.from(set.words);
+        randomWords.forEach(word => {
+          if (!existing.includes(word)) {
+            existing.push(word);
+          }
+        });
+        set.words = existing;
+        selectBaseWord(currentSetType, currentIndex);
+        document.body.removeChild(modal);
+        showStatus(`Added ${randomWords.length} random words`);
+      };
+
+      content.querySelector('#close-random-btn').onclick = () => {
+        document.body.removeChild(modal);
+      };
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+    }
+
+    function isBaseWordExists(word) {
+      const wordUpper = word.toUpperCase();
+      const allSets = [
+        ...(wordsets.WORD_SET_5 || []),
+        ...(wordsets.WORD_SET_6 || [])
+      ];
+      return allSets.some(set => set.letters === wordUpper);
+    }
+
+    function getCanonicalForm(word) {
+      return word.toUpperCase().split('').sort().join('');
+    }
+
+    function isAnagramOfBaseWord(word) {
+      const wordCanonical = getCanonicalForm(word);
+      const wordLength = word.length;
+      const allSets = [
+        ...(wordsets.WORD_SET_5 || []),
+        ...(wordsets.WORD_SET_6 || [])
+      ];
+      return allSets.some(set =>
+        set.letters.length === wordLength &&
+        getCanonicalForm(set.letters) === wordCanonical
+      );
+    }
+
+    function generateCleanCandidates(length) {
+      if (!dictionary) {
+        alert('Load a dictionary first.');
+        return [];
+      }
+
+      const candidates = [];
+      const wordsOfLength = Array.from(dictionary).filter(w => w.length === length);
+
+      if (wordsOfLength.length < 5) {
+        showStatus(`Not enough ${length}-letter words in dictionary`, true);
+        return [];
+      }
+
+      let attempts = 0;
+      const maxAttempts = 1000;
+
+      while (candidates.length < 5 && attempts < maxAttempts) {
+        const randomIdx = Math.floor(Math.random() * wordsOfLength.length);
+        const word = wordsOfLength[randomIdx];
+
+        // Check if word is clean (not existing base word or anagram)
+        if (!isBaseWordExists(word) && !isAnagramOfBaseWord(word)) {
+          // Also check it's not already in our candidates
+          if (!candidates.some(c => getCanonicalForm(c) === getCanonicalForm(word))) {
+            candidates.push(word.toUpperCase());
+          }
+        }
+
+        attempts++;
+      }
+
+      if (candidates.length < 5) {
+        showStatus('Could not generate 5 unique candidates. Try again.', true);
+        return [];
+      }
+
+      return candidates;
+    }
+
+    function handleGenerateNewSet(length) {
+      if (!dictionary) {
+        alert('Load a dictionary first.');
+        return;
+      }
+
+      const candidates = generateCleanCandidates(length);
+      if (candidates.length === 0) return;
+
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      `;
+
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 500px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      `;
+
+      content.innerHTML = `
+        <h2 style="margin-bottom: 8px;">Choose Base Word for New ${length}-Letter Set</h2>
+        <p style="color: #666; margin-bottom: 16px; font-size: 13px;">Select one word to generate all anagrams</p>
+        <div id="candidate-list" style="
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 20px;
+        "></div>
+        <div style="display: flex; gap: 12px;">
+          <button id="cancel-candidates-btn" style="
+            flex: 1;
+            padding: 10px;
+            background: #999;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+          ">Cancel</button>
+        </div>
+      `;
+
+      const candidateList = content.querySelector('#candidate-list');
+      candidates.forEach(word => {
+        const btn = document.createElement('button');
+        btn.textContent = word;
+        btn.style.cssText = `
+          padding: 12px;
+          background: #f0f0f0;
+          border: 2px solid #ddd;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 16px;
+          transition: all 0.2s;
+        `;
+        btn.onmouseover = () => {
+          btn.style.background = '#e0e0e0';
+          btn.style.borderColor = '#4caf50';
+        };
+        btn.onmouseout = () => {
+          btn.style.background = '#f0f0f0';
+          btn.style.borderColor = '#ddd';
+        };
+        btn.onclick = () => {
+          document.body.removeChild(modal);
+          createNewWordSet(word, length);
+        };
+        candidateList.appendChild(btn);
+      });
+
+      content.querySelector('#cancel-candidates-btn').onclick = () => {
+        document.body.removeChild(modal);
+      };
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+    }
+
+    function createNewWordSet(baseWord, length) {
+      const anagrams = generateAnagrams(baseWord);
+
+      if (anagrams.length === 0) {
+        showStatus(`No anagrams found for ${baseWord}`, true);
+        return;
+      }
+
+      // Create a temporary set object for editing
+      const tempSet = {
+        letters: baseWord,
+        words: anagrams
+      };
+
+      // Store this as current set being created
+      window.newSetBeingCreated = {
+        set: tempSet,
+        length: length,
+        originalAnagrams: anagrams.length
+      };
+
+      // Switch to editor view for this set
+      currentSetType = null; // Not part of existing sets
+      currentIndex = null;
+
+      const words = anagrams;
+      const rejectedWords = [];
+
+      editorTitle.innerHTML = `<strong style="color: #4caf50;">NEW SET:</strong> ${baseWord} (${length}-letter) — ${words.length} anagrams`;
+      editorSubtitle.textContent = `Total sub-words: ${words.length} | Rejected: ${rejectedWords.length}`;
+
+      const activeWords = words.filter((w) => !rejectedWords.includes(w));
+
+      editorBody.innerHTML = `
+        <div class="word-column">
+          <div class="word-column-title">Active Words (${activeWords.length})</div>
+          <div class="word-list" id="active-words"></div>
+        </div>
+        <div class="word-column">
+          <div class="word-column-title">Rejected Words (${rejectedWords.length})</div>
+          <div class="word-list rejected" id="rejected-words"></div>
+        </div>
+      `;
+
+      const activeWordsEl = document.getElementById('active-words');
+      const rejectedWordsEl = document.getElementById('rejected-words');
+
+      activeWords.forEach((word) => {
+        const tag = document.createElement('span');
+        tag.className = 'word-tag';
+        tag.textContent = word;
+        tag.onclick = () => {
+          rejectedWords.push(word);
+          createNewWordSet(baseWord, length);
+        };
+        tag.title = 'Click to reject';
+        activeWordsEl.appendChild(tag);
+      });
+
+      rejectedWords.forEach((word) => {
+        const tag = document.createElement('span');
+        tag.className = 'word-tag';
+        tag.textContent = word;
+        tag.onclick = () => {
+          rejectedWords.splice(rejectedWords.indexOf(word), 1);
+          createNewWordSet(baseWord, length);
+        };
+        tag.title = 'Click to restore';
+        rejectedWordsEl.appendChild(tag);
+      });
+
+      if (activeWords.length === 0) {
+        activeWordsEl.innerHTML = '<div class="empty-state">All words rejected</div>';
+      }
+      if (rejectedWords.length === 0) {
+        rejectedWordsEl.innerHTML = '<div class="empty-state">No rejected words</div>';
+      }
+
+      // Store the rejected words for this set
+      window.newSetRejectedWords = rejectedWords;
+
+      // Show the "Add This Set" button and hide the "Confirm Changes" button
+      confirmNewSetBtn.style.display = 'inline-block';
+      confirmBtn.style.display = 'none';
+      resetBtn.style.display = 'inline-block';
+    }
+
+    function generateAnagrams(baseLetters) {
+      if (!dictionary) {
+        alert('Load a dictionary first.');
+        return [];
+      }
+
+      const letters = baseLetters.toUpperCase().split('').sort();
+      const letterCounts = {};
+      letters.forEach(l => {
+        letterCounts[l] = (letterCounts[l] || 0) + 1;
+      });
+
+      const anagrams = [];
+      dictionary.forEach(word => {
+        if (word.length < 3 || word.length > letters.length) return;
+
+        const wordLetters = word.toUpperCase().split('').sort();
+        const wordCounts = {};
+        wordLetters.forEach(l => {
+          wordCounts[l] = (wordCounts[l] || 0) + 1;
+        });
+
+        // Check if word can be formed from base letters
+        let canForm = true;
+        for (const letter in wordCounts) {
+          if (!letterCounts[letter] || wordCounts[letter] > letterCounts[letter]) {
+            canForm = false;
+            break;
+          }
+        }
+
+        if (canForm) {
+          anagrams.push(word.toUpperCase());
+        }
+      });
+
+      return anagrams.sort();
+    }
+
+    function showAnagramModal(baseLetters, baseWord) {
+      const anagrams = generateAnagrams(baseLetters);
+
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      `;
+
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 600px;
+        max-height: 70vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      `;
+
+      content.innerHTML = `
+        <h2 style="margin-bottom: 16px;">Generate Anagrams for ${baseWord}</h2>
+        <p style="color: #666; margin-bottom: 16px;">Found ${anagrams.length} possible words from "${baseLetters}"</p>
+        <div id="anagram-list" style="
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 20px;
+          max-height: 300px;
+          overflow-y: auto;
+          padding: 12px;
+          background: #f5f5f5;
+          border-radius: 6px;
+        "></div>
+        <div style="display: flex; gap: 12px;">
+          <button id="add-all-btn" style="
+            flex: 1;
+            padding: 10px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+          ">Add All ${anagrams.length} Words</button>
+          <button id="close-modal-btn" style="
+            flex: 1;
+            padding: 10px;
+            background: #999;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+          ">Close</button>
+        </div>
+      `;
+
+      const anagramList = content.querySelector('#anagram-list');
+      anagrams.forEach(word => {
+        const tag = document.createElement('span');
+        tag.className = 'word-tag';
+        tag.textContent = word;
+        tag.style.cursor = 'pointer';
+        tag.title = 'Click to add';
+        tag.onclick = () => {
+          // Add this word to active words
+          const set = wordsets[currentSetType][currentIndex];
+          if (!set.words.includes(word)) {
+            if (Array.isArray(set.words)) {
+              set.words.push(word);
+            } else {
+              set.words = Array.from(set.words);
+              set.words.push(word);
+            }
+          }
+          tag.style.opacity = '0.5';
+          tag.style.textDecoration = 'line-through';
+        };
+        anagramList.appendChild(tag);
+      });
+
+      content.querySelector('#add-all-btn').onclick = () => {
+        const set = wordsets[currentSetType][currentIndex];
+        const existing = Array.isArray(set.words) ? set.words : Array.from(set.words);
+        anagrams.forEach(word => {
+          if (!existing.includes(word)) {
+            existing.push(word);
+          }
+        });
+        set.words = existing;
+        selectBaseWord(currentSetType, currentIndex);
+        document.body.removeChild(modal);
+        showStatus(`Added ${anagrams.length} anagrams to ${baseWord}`);
+      };
+
+      content.querySelector('#close-modal-btn').onclick = () => {
+        document.body.removeChild(modal);
+      };
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+    }
+
+    function populateBaseWords() {
+      baseWordList.innerHTML = '';
+      const allSets = [];
+
+      (wordsets.WORD_SET_5 || []).forEach((set, idx) => {
+        allSets.push({ type: 'WORD_SET_5', index: idx, letters: set.letters });
+      });
+
+      (wordsets.WORD_SET_6 || []).forEach((set, idx) => {
+        allSets.push({ type: 'WORD_SET_6', index: idx, letters: set.letters });
+      });
+
+      allSets.forEach((item) => {
+        const btn = document.createElement('button');
+        btn.className = 'base-word-btn';
+        btn.textContent = item.letters;
+        btn.onclick = () => selectBaseWord(item.type, item.index);
+        baseWordList.appendChild(btn);
+      });
+    }
+
+    function handlePluralMode(word, baseLetters, allWords, rejectedWords) {
+      // Get letter counts for base word
+      const baseLetterCount = {};
+      baseLetters.toUpperCase().split('').forEach(l => {
+        baseLetterCount[l] = (baseLetterCount[l] || 0) + 1;
+      });
+
+      // Get letter counts for selected word
+      const wordLetterCount = {};
+      word.toUpperCase().split('').forEach(l => {
+        wordLetterCount[l] = (wordLetterCount[l] || 0) + 1;
+      });
+
+      // Check if 'S' is available in remaining letters
+      let hasUnusedS = false;
+      if (baseLetterCount['S'] && baseLetterCount['S'] > (wordLetterCount['S'] || 0)) {
+        hasUnusedS = true;
+      }
+
+      if (!hasUnusedS) {
+        showStatus(`No unused 'S' available for "${word}"`, true);
+        return;
+      }
+
+      // Form plural
+      const plural = word + 'S';
+
+      // Check if plural can be formed from base letters
+      const pluralLetterCount = {};
+      plural.toUpperCase().split('').forEach(l => {
+        pluralLetterCount[l] = (pluralLetterCount[l] || 0) + 1;
+      });
+
+      let canForm = true;
+      for (const letter in pluralLetterCount) {
+        if (!baseLetterCount[letter] || pluralLetterCount[letter] > baseLetterCount[letter]) {
+          canForm = false;
+          break;
+        }
+      }
+
+      if (!canForm) {
+        showStatus(`"${plural}" cannot be formed from "${baseLetters}"`, true);
+        return;
+      }
+
+      // Check if in dictionary
+      if (dictionary && !dictionary.has(plural.toLowerCase())) {
+        showStatus(`"${plural}" not found in dictionary`, true);
+        return;
+      }
+
+      // Check if already in list
+      if (allWords.includes(plural)) {
+        showStatus(`"${plural}" already in the list`, true);
+        return;
+      }
+
+      // Add plural to the list
+      allWords.push(plural);
+      showStatus(`✓ Added "${plural}"`);
+      selectBaseWord(currentSetType, currentIndex);
+    }
+
+    function handleManualEntry(word, baseLetters, allWords, activeWords, rejectedWords) {
+      if (!word.trim()) {
+        showStatus('Please enter a word', true);
+        return;
+      }
+
+      word = word.toUpperCase().trim();
+
+      // Get letter counts for base word
+      const baseLetterCount = {};
+      baseLetters.toUpperCase().split('').forEach(l => {
+        baseLetterCount[l] = (baseLetterCount[l] || 0) + 1;
+      });
+
+      // Get letter counts for entered word
+      const wordLetterCount = {};
+      word.split('').forEach(l => {
+        wordLetterCount[l] = (wordLetterCount[l] || 0) + 1;
+      });
+
+      // Check if word can be formed from base letters
+      let canForm = true;
+      for (const letter in wordLetterCount) {
+        if (!baseLetterCount[letter] || wordLetterCount[letter] > baseLetterCount[letter]) {
+          canForm = false;
+          break;
+        }
+      }
+
+      if (!canForm) {
+        showStatus(`"${word}" cannot be formed from "${baseLetters}"`, true);
+        return;
+      }
+
+      // Check if in dictionary
+      if (dictionary && !dictionary.has(word.toLowerCase())) {
+        showStatus(`"${word}" not found in dictionary`, true);
+        return;
+      }
+
+      // Check if already in list
+      if (allWords.includes(word)) {
+        showStatus(`"${word}" already in the list`, true);
+        return;
+      }
+
+      // Add word to the list
+      allWords.push(word);
+      showStatus(`✓ Added "${word}"`);
+      selectBaseWord(currentSetType, currentIndex);
+    }
+
+    function selectBaseWord(setType, index) {
+      currentSetType = setType;
+      currentIndex = index;
+
+      // Update active button
+      document.querySelectorAll('.base-word-btn').forEach((btn) => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+
+      // Populate editor
+      const set = wordsets[setType][index];
+      let words = Array.isArray(set.words) ? set.words : Array.from(set.words);
+
+      // Deduplicate and sort
+      words = Array.from(new Set(words)).sort();
+
+      const rejectedWords = changes[`${setType}_${index}`] || [];
+
+      editorTitle.innerHTML = `${set.letters} (${setType === 'WORD_SET_5' ? '5-letter' : '6-letter'} set)
+        <button id="gen-anagrams-btn" style="
+          margin-left: 12px;
+          padding: 6px 12px;
+          background: #ff9800;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 12px;
+        " ${!dictionary ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>Generate Anagrams</button>
+        <button id="random-words-btn" style="
+          margin-left: 6px;
+          padding: 6px 12px;
+          background: #2196f3;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 12px;
+        " ${!dictionary ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>Random Words</button>`;
+
+      if (dictionary) {
+        document.getElementById('gen-anagrams-btn').addEventListener('click', () => {
+          showAnagramModal(set.letters, set.letters);
+        });
+        document.getElementById('random-words-btn').addEventListener('click', () => {
+          const desiredLength = setType === 'WORD_SET_5' ? 5 : 6;
+          showRandomWordsModal(desiredLength);
+        });
+      }
+
+      editorSubtitle.textContent = `Total sub-words: ${words.length} | Rejected: ${rejectedWords.length}`;
+
+      const activeWords = words.filter((w) => !rejectedWords.includes(w));
+
+      editorBody.innerHTML = `
+        <div class="editor-body-content">
+          <div class="word-column">
+            <div class="word-column-title">Active Words (${activeWords.length})</div>
+            <div class="word-list" id="active-words"></div>
+          </div>
+          <div class="word-column">
+            <div class="word-column-title">Rejected Words (${rejectedWords.length})</div>
+            <div class="word-list rejected" id="rejected-words"></div>
+          </div>
+        </div>
+        <div class="editor-controls">
+          <label style="display: flex; align-items: center; gap: 6px; font-weight: 600;">
+            <input type="checkbox" id="plural-toggle" style="width: 18px; height: 18px; cursor: pointer;">
+            Plural Mode
+          </label>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="manual-entry-input" placeholder="Type word..." style="
+              padding: 6px 10px;
+              border: 1px solid #ddd;
+              border-radius: 4px;
+              font-size: 14px;
+              min-width: 120px;
+            " />
+            <button id="manual-entry-btn" style="
+              padding: 6px 12px;
+              background: #2196f3;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              font-weight: 600;
+              font-size: 13px;
+            ">Add</button>
+          </div>
+        </div>
+      `;
+
+      const activeWordsEl = document.getElementById('active-words');
+      const rejectedWordsEl = document.getElementById('rejected-words');
+      const pluralToggle = document.getElementById('plural-toggle');
+      const manualEntryInput = document.getElementById('manual-entry-input');
+      const manualEntryBtn = document.getElementById('manual-entry-btn');
+
+      // Set up plural mode and manual entry handlers
+      manualEntryBtn.addEventListener('click', () => {
+        handleManualEntry(manualEntryInput.value, set.letters, words, activeWords, rejectedWords);
+        manualEntryInput.value = '';
+      });
+
+      manualEntryInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleManualEntry(manualEntryInput.value, set.letters, words, activeWords, rejectedWords);
+          manualEntryInput.value = '';
+        }
+      });
+
+      activeWords.forEach((word) => {
+        const tag = document.createElement('span');
+        tag.className = 'word-tag';
+        tag.textContent = word;
+        tag.onclick = () => {
+          if (pluralToggle.checked) {
+            handlePluralMode(word, set.letters, words, rejectedWords);
+          } else {
+            moveWord(word, true);
+          }
+        };
+        tag.title = pluralToggle.checked ? 'Click to add plural' : 'Click to reject';
+        activeWordsEl.appendChild(tag);
+      });
+
+      pluralToggle.addEventListener('change', () => {
+        const titleText = pluralToggle.checked ? 'Click to add plural' : 'Click to reject';
+        activeWordsEl.querySelectorAll('.word-tag').forEach(tag => {
+          tag.title = titleText;
+        });
+      });
+
+      rejectedWords.forEach((word) => {
+        const tag = document.createElement('span');
+        tag.className = 'word-tag';
+        tag.textContent = word;
+        tag.onclick = () => moveWord(word, false);
+        tag.title = 'Click to restore';
+        rejectedWordsEl.appendChild(tag);
+      });
+
+      if (activeWords.length === 0) {
+        activeWordsEl.innerHTML = '<div class="empty-state">All words rejected</div>';
+      }
+      if (rejectedWords.length === 0) {
+        rejectedWordsEl.innerHTML = '<div class="empty-state">No rejected words</div>';
+      }
+
+      confirmBtn.style.display = 'inline-block';
+      confirmNewSetBtn.style.display = 'none';
+    }
+
+    function moveWord(word, isRejecting) {
+      const key = `${currentSetType}_${currentIndex}`;
+      if (!changes[key]) {
+        changes[key] = [];
+      }
+
+      if (isRejecting) {
+        if (!changes[key].includes(word)) {
+          changes[key].push(word);
+        }
+      } else {
+        changes[key] = changes[key].filter((w) => w !== word);
+      }
+
+      selectBaseWord(currentSetType, currentIndex);
+    }
+
+    function handleReset() {
+      if (confirm('Are you sure? This will discard all changes and close the file.')) {
+        wordsets = null;
+        fileHandle = null;
+        changes = {};
+        currentSetType = null;
+        currentIndex = null;
+        mainContent.style.display = 'none';
+        baseWordList.innerHTML = '';
+        editorBody.innerHTML = '';
+        resetBtn.style.display = 'none';
+        saveBtn.style.display = 'none';
+        loadDictBtn.style.display = 'none';
+        gen5LetterBtn.style.display = 'none';
+        gen6LetterBtn.style.display = 'none';
+        confirmBtn.style.display = 'none';
+        confirmNewSetBtn.style.display = 'none';
+        statusEl.style.display = 'none';
+      }
+    }
+
+    function handleConfirm() {
+      // Check if we're creating a new set
+      if (window.newSetBeingCreated) {
+        const newSet = window.newSetBeingCreated.set;
+        const rejectedWords = window.newSetRejectedWords || [];
+        const length = window.newSetBeingCreated.length;
+
+        // Calculate final word list
+        const allAnagrams = newSet.words;
+        const finalWords = allAnagrams.filter(w => !rejectedWords.includes(w));
+
+        if (finalWords.length === 0) {
+          alert('Cannot add a set with no words.');
+          return;
+        }
+
+        // Create the final set
+        const finalSet = {
+          letters: newSet.letters,
+          words: finalWords
+        };
+
+        // Add to appropriate word set
+        if (length === 5) {
+          wordsets.WORD_SET_5.push(finalSet);
+        } else {
+          wordsets.WORD_SET_6.push(finalSet);
+        }
+
+        // Clear temporary data
+        delete window.newSetBeingCreated;
+        delete window.newSetRejectedWords;
+
+        // Refresh UI
+        populateBaseWords();
+
+        showStatus(`✓ Added new ${length}-letter set "${finalSet.letters}" with ${finalWords.length} words`);
+
+        // Auto-select the newly created word set
+        // Find and click the button for the new word set
+        setTimeout(() => {
+          const buttons = document.querySelectorAll('.base-word-btn');
+          const newSetBtn = Array.from(buttons).find(btn => btn.textContent === finalSet.letters);
+          if (newSetBtn) {
+            // Simulate a click on the new set button
+            const event = new MouseEvent('click', { bubbles: true });
+            Object.defineProperty(event, 'target', { value: newSetBtn, enumerable: true });
+            newSetBtn.dispatchEvent(event);
+          }
+        }, 0);
+
+        return;
+      }
+
+      // Original logic for editing existing sets
+      const key = `${currentSetType}_${currentIndex}`;
+      const rejectedWords = changes[key] || [];
+
+      if (rejectedWords.length === 0) {
+        alert('No changes to confirm for this word set.');
+        return;
+      }
+
+      const set = wordsets[currentSetType][currentIndex];
+      const words = Array.isArray(set.words) ? set.words : Array.from(set.words);
+      const updatedWords = words.filter((w) => !rejectedWords.includes(w));
+
+      set.words = updatedWords;
+      changes[key] = [];
+
+      showStatus(`Confirmed changes to ${set.letters}: ${words.length - updatedWords.length} words removed`);
+      selectBaseWord(currentSetType, currentIndex);
+    }
+
+    async function handleSave() {
+      if (!wordsets) {
+        alert('No file open.');
+        return;
+      }
+
+      // Apply any pending changes
+      Object.keys(changes).forEach((key) => {
+        const parts = key.split('_');
+        const indexStr = parts.pop();
+        const setType = parts.join('_');
+        const index = parseInt(indexStr, 10);
+        const rejectedWords = changes[key];
+
+        if (rejectedWords.length > 0) {
+          const set = wordsets[setType][index];
+          const words = Array.isArray(set.words) ? set.words : Array.from(set.words);
+          set.words = words.filter((w) => !rejectedWords.includes(w));
+        }
+      });
+
+      // Convert Sets back to arrays, deduplicate, and sort
+      const saveData = {
+        WORD_SET_5: (wordsets.WORD_SET_5 || []).map((set) => ({
+          letters: set.letters,
+          words: Array.from(new Set(
+            Array.isArray(set.words) ? set.words : Array.from(set.words)
+          )).sort(),
+        })),
+        WORD_SET_6: (wordsets.WORD_SET_6 || []).map((set) => ({
+          letters: set.letters,
+          words: Array.from(new Set(
+            Array.isArray(set.words) ? set.words : Array.from(set.words)
+          )).sort(),
+        })),
+      };
+
+      // If file handle is available, write directly
+      if (fileHandle) {
+        try {
+          // Request write permission if needed
+          if (await fileHandle.queryPermission({ mode: 'readwrite' }) === 'denied') {
+            if (await fileHandle.requestPermission({ mode: 'readwrite' }) === 'denied') {
+              showStatus('Write permission denied', true);
+              return;
+            }
+          }
+
+          // Write to file
+          const writable = await fileHandle.createWritable();
+          const json = JSON.stringify(saveData, null, 2) + '\n';
+          await writable.write(json);
+          await writable.close();
+
+          changes = {};
+          showStatus(`Saved to ${fileHandle.name}. Run 'npm run build' in the project directory.`);
+        } catch (err) {
+          showStatus(`Error saving file: ${err.message}`, true);
+        }
+      } else {
+        // Fallback: export as download
+        const json = JSON.stringify(saveData, null, 2) + '\n';
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'wordsets.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        changes = {};
+        showStatus('Exported wordsets.json. Replace src/assets/wordsets.json in your project and rebuild.');
+      }
+    }
+  </script>
+</body>
+</html>

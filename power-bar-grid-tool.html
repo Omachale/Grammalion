@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Power Bar Grid Configurator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      gap: 30px;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+      margin: 0;
+    }
+
+    .main-content {
+      display: flex;
+      gap: 20px;
+    }
+
+    #canvas-container {
+      position: relative;
+      background: #000;
+      border: 2px solid #444;
+      display: inline-block;
+      overflow: auto;
+      max-height: 90vh;
+    }
+
+    canvas {
+      display: block;
+      cursor: grab;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 320px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    h2 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 13px;
+      color: #0f0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="number"] {
+      padding: 8px 12px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+      font-size: 14px;
+      border-radius: 3px;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #0f0;
+      background: #2a2a2a;
+    }
+
+    input[type="file"] {
+      padding: 8px 12px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+      font-size: 13px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    input[type="file"]::file-selector-button {
+      padding: 6px 12px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      border-radius: 3px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+
+    input[type="file"]::file-selector-button:hover {
+      background: #0d0;
+    }
+
+    .info-box {
+      background: #222;
+      border-left: 3px solid #0f0;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #aaa;
+      border-radius: 3px;
+    }
+
+    button {
+      padding: 10px 16px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 13px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #0d0;
+    }
+
+    button:active {
+      background: #0b0;
+    }
+
+    .divider {
+      height: 1px;
+      background: #444;
+      margin: 10px 0;
+    }
+
+    .section-title {
+      font-weight: 700;
+      font-size: 12px;
+      color: #0f0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 10px;
+    }
+
+    #export-output {
+      background: #111;
+      border: 1px solid #555;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #0f0;
+      border-radius: 3px;
+      line-height: 1.4;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .button-group button {
+      flex: 1;
+    }
+
+    .status-message {
+      background: #2a2a1a;
+      border-left: 3px solid #ff0;
+      padding: 10px;
+      font-size: 12px;
+      color: #ff0;
+      border-radius: 3px;
+    }
+
+    .status-message.success {
+      background: #1a2a1a;
+      border-left-color: #0f0;
+      color: #0f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="main-content">
+    <div id="canvas-container">
+      <canvas id="grid-canvas"></canvas>
+    </div>
+
+    <div class="controls">
+      <div>
+        <h2>Power Bar Grid</h2>
+        <p style="margin: 0; font-size: 12px; color: #888;">30 rows × 2 columns</p>
+      </div>
+
+      <div class="control-group">
+        <label>Load Image:</label>
+        <input type="file" id="imageInput" accept="image/*">
+        <small style="color: #888;">Select Power Bar Base.png</small>
+      </div>
+
+      <div id="status-message"></div>
+
+      <div class="divider"></div>
+
+      <div class="section-title">Grid Parameters</div>
+
+      <div class="control-group">
+        <label>Cell Height (px):</label>
+        <input type="number" id="cellHeight" value="20" min="5" max="200" step="1">
+        <small style="color: #888;">Height of each cell row</small>
+      </div>
+
+      <div class="control-group">
+        <label>Cell Width (px):</label>
+        <input type="number" id="cellWidth" value="50" min="5" max="300" step="1">
+        <small style="color: #888;">Width of each column</small>
+      </div>
+
+      <div class="control-group">
+        <label>Column Gap (px):</label>
+        <input type="number" id="columnGap" value="10" min="0" max="100" step="1">
+        <small style="color: #888;">Space between L and R columns</small>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-title">Grid Position</div>
+
+      <div class="control-group">
+        <label>Offset X (px):</label>
+        <input type="number" id="offsetX" value="0" min="-1000" max="2000" step="1">
+        <small style="color: #888;">Drag canvas or adjust here</small>
+      </div>
+
+      <div class="control-group">
+        <label>Offset Y (px):</label>
+        <input type="number" id="offsetY" value="0" min="-1000" max="2000" step="1">
+        <small style="color: #888;">Drag canvas or adjust here</small>
+      </div>
+
+      <div class="info-box">
+        💡 <strong>Tip:</strong> Drag the canvas to position the grid. Parameters update in real-time.
+      </div>
+
+      <div class="divider"></div>
+
+      <button id="exportBtn">📋 Export Coordinates</button>
+
+      <div class="section-title">Export Output</div>
+      <div id="export-output">Load an image and position the grid, then click Export.</div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('grid-canvas');
+    const ctx = canvas.getContext('2d');
+    const imageInput = document.getElementById('imageInput');
+    const cellHeightInput = document.getElementById('cellHeight');
+    const cellWidthInput = document.getElementById('cellWidth');
+    const columnGapInput = document.getElementById('columnGap');
+    const offsetXInput = document.getElementById('offsetX');
+    const offsetYInput = document.getElementById('offsetY');
+    const exportBtn = document.getElementById('exportBtn');
+    const exportOutput = document.getElementById('export-output');
+    const statusMessage = document.getElementById('status-message');
+
+    const ROWS = 30;
+    const COLS = 2;
+
+    let image = null;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragStartOffsetX = 0;
+    let dragStartOffsetY = 0;
+
+    function showStatus(message, isSuccess = false) {
+      statusMessage.textContent = message;
+      statusMessage.className = 'status-message' + (isSuccess ? ' success' : '');
+    }
+
+    // Image loading
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        image = new Image();
+        image.onload = () => {
+          canvas.width = image.width;
+          canvas.height = image.height;
+          redraw();
+          showStatus(`✓ Loaded: ${file.name} (${image.width} × ${image.height}px)`, true);
+        };
+        image.onerror = () => {
+          showStatus('✗ Failed to load image', false);
+        };
+        image.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function getParams() {
+      return {
+        cellHeight: parseFloat(cellHeightInput.value),
+        cellWidth: parseFloat(cellWidthInput.value),
+        columnGap: parseFloat(columnGapInput.value),
+        offsetX: parseFloat(offsetXInput.value),
+        offsetY: parseFloat(offsetYInput.value),
+      };
+    }
+
+    function redraw() {
+      if (!image) {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 0, canvas.width || 800, canvas.height || 600);
+        ctx.fillStyle = '#888';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Load an image to start', (canvas.width || 800) / 2, (canvas.height || 600) / 2);
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0);
+
+      const params = getParams();
+      const cellHeight = params.cellHeight;
+      const cellWidth = params.cellWidth;
+      const columnGap = params.columnGap;
+      const offsetX = params.offsetX;
+      const offsetY = params.offsetY;
+
+      const leftColX = offsetX;
+      const rightColX = offsetX + cellWidth + columnGap;
+
+      // Draw grid cells
+      ctx.strokeStyle = '#00ff00';
+      ctx.lineWidth = 1;
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#00ff00';
+
+      for (let row = 0; row < ROWS; row++) {
+        const y = offsetY + row * cellHeight;
+
+        // Left cell
+        ctx.strokeRect(leftColX, y, cellWidth, cellHeight);
+
+        // Right cell
+        ctx.strokeRect(rightColX, y, cellWidth, cellHeight);
+
+        // Row number (every 5 rows)
+        if (row % 5 === 0) {
+          ctx.fillText(String(row).padStart(2, '0'), leftColX - 25, y + cellHeight / 2 + 3);
+        }
+      }
+
+      // Column labels
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText('L', leftColX + cellWidth / 2 - 4, offsetY - 8);
+      ctx.fillText('R', rightColX + cellWidth / 2 - 4, offsetY - 8);
+
+      // Grid info overlay
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(offsetX, offsetY - 25, 200, 20);
+      ctx.fillStyle = '#00ff00';
+      ctx.font = '10px monospace';
+      ctx.fillText(`${cellWidth}px × ${cellHeight}px | Gap: ${columnGap}px`, offsetX + 5, offsetY - 10);
+    }
+
+    // Mouse dragging
+    canvas.addEventListener('mousedown', (e) => {
+      if (!image) return;
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragStartOffsetX = parseFloat(offsetXInput.value);
+      dragStartOffsetY = parseFloat(offsetYInput.value);
+      canvas.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      offsetXInput.value = Math.round(dragStartOffsetX + deltaX);
+      offsetYInput.value = Math.round(dragStartOffsetY + deltaY);
+      redraw();
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      canvas.style.cursor = 'grab';
+    });
+
+    // Input change listeners
+    cellHeightInput.addEventListener('input', redraw);
+    cellWidthInput.addEventListener('input', redraw);
+    columnGapInput.addEventListener('input', redraw);
+    offsetXInput.addEventListener('input', redraw);
+    offsetYInput.addEventListener('input', redraw);
+
+    // Export function
+    exportBtn.addEventListener('click', () => {
+      if (!image) {
+        showStatus('✗ Load an image first', false);
+        return;
+      }
+
+      const params = getParams();
+
+      const exportData = {
+        powerBar: {
+          imageSize: {
+            width: image.width,
+            height: image.height,
+          },
+          cellHeight: Math.round(params.cellHeight),
+          cellWidth: Math.round(params.cellWidth),
+          columnGap: Math.round(params.columnGap),
+          gridOffsetX: Math.round(params.offsetX),
+          gridOffsetY: Math.round(params.offsetY),
+          totalRows: ROWS,
+          totalColumns: COLS,
+        },
+      };
+
+      // Also provide a helper comment
+      const exportText = `// Power Bar Configuration
+// Total: ${ROWS} rows × ${COLS} columns
+// Calculate cell position: cellY = gridOffsetY + (row * cellHeight)
+// Left column X = gridOffsetX
+// Right column X = gridOffsetX + cellWidth + columnGap
+
+${JSON.stringify(exportData, null, 2)}`;
+
+      exportOutput.textContent = exportText;
+      showStatus('✓ Coordinates exported', true);
+    });
+
+    // Initialize
+    redraw();
+  </script>
+</body>
+</html>

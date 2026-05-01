@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grammalion UI Positioning Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            color: #48c1c0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #48c1c0;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .canvas-container {
+            position: relative;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: #0a0a0a;
+        }
+
+        /* Center lines */
+        .canvas-container::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: rgba(72, 193, 192, 0.5);
+            top: 50%;
+            left: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .canvas-container::after {
+            content: '';
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            background: rgba(72, 193, 192, 0.5);
+            left: 50%;
+            top: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* Canvas label */
+        .canvas-label {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 12px;
+            color: #48c1c0;
+            opacity: 0.7;
+            z-index: 11;
+            pointer-events: none;
+        }
+
+        .box {
+            position: absolute;
+            border: 2px solid #48c1c0;
+            background: rgba(72, 193, 192, 0.1);
+            cursor: move;
+            user-select: none;
+            z-index: 10;
+        }
+
+        .sentence-box {
+            /* Width and height will be set by JavaScript */
+        }
+
+        .input-box {
+            /* Width and height will be set by JavaScript */
+        }
+
+        .center-line {
+            position: absolute;
+            width: 1px;
+            background: rgba(255, 200, 0, 0.6);
+            left: 50%;
+            z-index: 9;
+            pointer-events: none;
+        }
+
+        .box-label {
+            font-size: 11px;
+            color: #48c1c0;
+            position: absolute;
+            top: -18px;
+            left: 0;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #0a0a0a;
+            border: 2px solid #48c1c0;
+            padding: 20px;
+            width: 350px;
+            box-shadow: 0 0 20px rgba(72, 193, 192, 0.3);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 14px;
+            color: #48c1c0;
+            font-weight: bold;
+        }
+
+        input[type="number"] {
+            background: #1a1a2e;
+            border: 1px solid #48c1c0;
+            color: #48c1c0;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(72, 193, 192, 0.5);
+        }
+
+        .readout {
+            background: #1a1a2e;
+            border: 1px solid #48c1c0;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .readout-line {
+            margin: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .readout-label {
+            color: #48c1c0;
+            opacity: 0.7;
+        }
+
+        .readout-value {
+            color: #48c1c0;
+            font-weight: bold;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        button {
+            background: #48c1c0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #5dd4d3;
+        }
+
+        .info {
+            max-width: 800px;
+            background: #0a0a0a;
+            border: 1px solid #48c1c0;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 Grammalion UI Positioning Tool</h1>
+
+    <div class="info">
+        <strong>Instructions:</strong> This tool displays Display4.png (1374×768) with the actual game canvas area highlighted.
+        Position the boxes directly over the Display4.png image. The readout shows both Display4 coordinates and converted game canvas coordinates.
+        The golden center line marks the horizontal center for all UI elements. When you copy coordinates, they'll automatically be converted to game space (1024×768, offset by 175px).
+    </div>
+
+    <div class="container">
+        <div class="canvas-container" id="canvas">
+            <div class="canvas-label">Display4.png (1374×768 with 175px side margins)</div>
+
+            <div class="center-line" id="centerLine" style="display: none;"></div>
+
+            <div class="box sentence-box" id="sentenceBox">
+                <div class="box-label">Sentence Panel</div>
+            </div>
+
+            <div class="box input-box" id="inputBox">
+                <div class="box-label" style="top: -22px;">Input Area</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Sentence Panel Position (Display4 coordinates)</label>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px;">X (Left)</label>
+                        <input type="number" id="sentenceX" value="224" min="0" max="1374" step="1">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px;">Y (Top)</label>
+                        <input type="number" id="sentenceY" value="210" min="0" max="768" step="1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>UI Panel Width (both panels, same in both spaces)</label>
+                <input type="number" id="sentenceW" value="600" min="200" max="1000" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>Sentence Panel Height</label>
+                <input type="number" id="sentenceH" value="60" min="20" max="200" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>Input Area Height</label>
+                <input type="number" id="inputH" value="48" min="20" max="150" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>Input Area Y Offset (gap below sentence)</label>
+                <input type="number" id="inputOffset" value="15" min="0" max="100" step="1">
+            </div>
+
+            <button onclick="copyCoordinates()">📋 Copy Coordinates</button>
+
+            <div class="readout">
+                <div class="readout-line">
+                    <span class="readout-label">Sentence Panel:</span>
+                    <span class="readout-value" id="sentenceCoords">Display4: x=224, y=210 | Game: x=49, y=210</span>
+                </div>
+                <div class="readout-line">
+                    <span class="readout-label">Input Area:</span>
+                    <span class="readout-value" id="inputCoords">Display4: y=323, h=48 | Game: y=323, h=48</span>
+                </div>
+                <div class="readout-line">
+                    <span class="readout-label">Game Canvas Center:</span>
+                    <span class="readout-value" style="color: #ffcc00;">Game: x=512, y=384 | Display4: x=687, y=384</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const sentenceBox = document.getElementById('sentenceBox');
+        const inputBox = document.getElementById('inputBox');
+
+        const sentenceXInput = document.getElementById('sentenceX');
+        const sentenceYInput = document.getElementById('sentenceY');
+        const sentenceWInput = document.getElementById('sentenceW');
+        const sentenceHInput = document.getElementById('sentenceH');
+        const inputHInput = document.getElementById('inputH');
+        const inputOffsetInput = document.getElementById('inputOffset');
+        const centerLine = document.getElementById('centerLine');
+
+        // Display4.png and game canvas dimensions
+        const DISPLAY4_WIDTH = 1374;
+        const DISPLAY4_HEIGHT = 768;
+        const GAME_WIDTH = 1024;
+        const GAME_HEIGHT = 768;
+        const GAME_OFFSET_X = 106;  // Display4 X=302 corresponds to Game X=408 (verified by manual positioning)
+
+        let canvasScale = 1; // Will be calculated after image loads
+
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Load Display4.png and setup canvas
+        const img = new Image();
+        img.onload = function() {
+            // Display4 is 1374x768, show it scaled to fit screen
+            const maxWidth = window.innerWidth - 400;
+            const maxHeight = window.innerHeight - 200;
+
+            canvasScale = Math.min(
+                maxWidth / DISPLAY4_WIDTH,
+                maxHeight / DISPLAY4_HEIGHT,
+                0.8  // Don't make it too large
+            );
+
+            // Set canvas container size to Display4 dimensions
+            canvas.style.width = (DISPLAY4_WIDTH * canvasScale) + 'px';
+            canvas.style.height = (DISPLAY4_HEIGHT * canvasScale) + 'px';
+            canvas.style.backgroundImage = `url('file:///C:/Users/LukeD/Projects/Grammalion/src/assets/images/Display4.png')`;
+
+            updateDisplay();
+        };
+        img.src = 'file:///C:/Users/LukeD/Projects/Grammalion/src/assets/images/Display4.png';
+
+        function updateDisplay() {
+            const x = parseInt(sentenceXInput.value);
+            const y = parseInt(sentenceYInput.value);
+            const w = parseInt(sentenceWInput.value);
+            const h = parseInt(sentenceHInput.value);
+            const inputH = parseInt(inputHInput.value);
+            const offset = parseInt(inputOffsetInput.value);
+
+            // Position boxes in Display4.png coordinates
+            sentenceBox.style.left = (x * canvasScale) + 'px';
+            sentenceBox.style.top = (y * canvasScale) + 'px';
+            sentenceBox.style.width = (w * canvasScale) + 'px';
+            sentenceBox.style.height = (h * canvasScale) + 'px';
+
+            const inputY = y + h + offset;
+            inputBox.style.left = (x * canvasScale) + 'px';
+            inputBox.style.top = (inputY * canvasScale) + 'px';
+            inputBox.style.width = (w * canvasScale) + 'px';
+            inputBox.style.height = (inputH * canvasScale) + 'px';
+
+            // Center line: runs from bottom of sentence panel down to bottom of input area
+            const centerX = (x + w / 2) * canvasScale;
+            const lineStartY = (y + h) * canvasScale;
+            const lineEndY = (inputY + inputH) * canvasScale;
+            const lineHeight = lineEndY - lineStartY;
+
+            centerLine.style.left = (centerX - 0.5) + 'px';
+            centerLine.style.top = lineStartY + 'px';
+            centerLine.style.height = lineHeight + 'px';
+            centerLine.style.display = 'block';
+
+            // Calculate game canvas coordinates (subtract the 175px offset)
+            const gameX = x - GAME_OFFSET_X;
+            const gameY = y;
+            const gameInputY = inputY - GAME_OFFSET_X;
+
+            document.getElementById('sentenceCoords').textContent =
+                `Display4: x=${x}, y=${y} | Game: x=${Math.round(gameX)}, y=${gameY}`;
+            document.getElementById('inputCoords').textContent =
+                `Display4: y=${inputY}, h=${inputH} | Game: y=${Math.round(gameInputY)}, h=${inputH}`;
+        }
+
+        // Drag functionality
+        sentenceBox.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            const rect = sentenceBox.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const canvasRect = canvas.getBoundingClientRect();
+            const newX = (e.clientX - canvasRect.left - dragOffset.x) / canvasScale;
+            const newY = (e.clientY - canvasRect.top - dragOffset.y) / canvasScale;
+
+            sentenceXInput.value = Math.max(0, Math.min(DISPLAY4_WIDTH - 100, Math.round(newX)));
+            sentenceYInput.value = Math.max(0, Math.min(DISPLAY4_HEIGHT - 100, Math.round(newY)));
+
+            updateDisplay();
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Input listeners
+        [sentenceXInput, sentenceYInput, sentenceWInput, sentenceHInput, inputHInput, inputOffsetInput]
+            .forEach(input => input.addEventListener('change', updateDisplay));
+
+        function copyCoordinates() {
+            const x = parseInt(sentenceXInput.value);
+            const y = parseInt(sentenceYInput.value);
+            const w = parseInt(sentenceWInput.value);
+            const h = parseInt(sentenceHInput.value);
+            const inputH = parseInt(inputHInput.value);
+            const offset = parseInt(inputOffsetInput.value);
+
+            // Convert from Display4.png coordinates to game canvas coordinates
+            const gameX = Math.round(x - GAME_OFFSET_X);
+            const gameY = y;
+            const gameInputY = Math.round((y + h + offset) - GAME_OFFSET_X);
+
+            const text = `sentencePanelX = ${gameX}
+sentencePanelY = ${gameY}
+sentencePanelW = ${w}
+sentencePanelH = ${h}
+inputAreaH = ${inputH}
+inputAreaY = ${gameInputY}`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Coordinates copied to clipboard (converted to game canvas space)!');
+            });
+        }
+
+        // Initialize will be called after image loads
+    </script>
+</body>
+</html>
