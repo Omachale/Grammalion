@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import { PANEL_CX, MENU_BTN_X, MENU_BTN_Y, MENU_BTN_SCALE } from '../ui/gameScreenLayout';
 import wordsets from '../assets/wordsets.json';
+import socketClient from '../network/SocketClient';
+import roomManager  from '../network/RoomManager';
 
 // ─── Die grid constants ───────────────────────────────────────────────────────
 const DIE_SIZE = 120;    // rendered px (square)
@@ -31,6 +33,11 @@ const FONT_STAGES = [
   { maxWords: 40, cols: 6, fontSize: '8px',  lineHeight: 9  },
 ];
 
+// ─── Multiplayer layout ───────────────────────────────────────────────────────
+const SCORE_CX  = 310;   // centre-x of the live scoreboard (left column)
+const SCORE_Y0  = 160;   // y-centre of the first player row
+const SCORE_ROW = 36;    // row-to-row spacing
+
 export default class JuggleScene extends Phaser.Scene {
   constructor() {
     super({ key: 'JuggleScene' });
@@ -44,6 +51,15 @@ export default class JuggleScene extends Phaser.Scene {
     const raw = data.rounds || '6 Letters';
     this._letterCount = raw.startsWith('5') ? 5 : 6;
 
+    // Store multiplayer context (used by create() and _submitWord())
+    this._isMultiplayer = !!data.isMultiplayer;
+    this._roomId        = data.roomId    || null;
+    this._playerName    = data.playerName || null;
+    this._duration      = data.duration  || null;
+    this._startTime     = data.startTime || null;
+    this._players       = (data.players  || []).map(p => ({ playerName: p.playerName, score: 0 }));
+    this._roundEnded    = false;
+
     // Parse word sets and convert arrays to Sets
     const WORD_SET_5 = wordsets.WORD_SET_5.map(set => ({
       letters: set.letters,
@@ -54,13 +70,22 @@ export default class JuggleScene extends Phaser.Scene {
       words: new Set(set.words)
     }));
 
-    // Randomly select a word set
-    const wordSets = this._letterCount === 5 ? WORD_SET_5 : WORD_SET_6;
-    const selectedSet = wordSets[Math.floor(Math.random() * wordSets.length)];
-
-    // Shuffle the letters
-    this._letters = this._shuffleString(selectedSet.letters);
-    this._wordList = selectedSet.words;
+    if (data.letters) {
+      // ── Multiplayer: server provided the shuffled letters ─────────────────
+      // Find the matching word set by sorting both letter strings and comparing.
+      // e.g. server sends "ENIHS" → sorted "EHINS" matches "SHINE" sorted "EHINS"
+      this._letters = data.letters.toUpperCase();
+      const sortedProvided = this._letters.split('').sort().join('');
+      const pool    = this._letterCount === 5 ? WORD_SET_5 : WORD_SET_6;
+      const matching = pool.find(s => s.letters.split('').sort().join('') === sortedProvided);
+      this._wordList = matching ? matching.words : new Set();
+    } else {
+      // ── Single player: pick a random set and shuffle ──────────────────────
+      const wordSets    = this._letterCount === 5 ? WORD_SET_5 : WORD_SET_6;
+      const selectedSet = wordSets[Math.floor(Math.random() * wordSets.length)];
+      this._letters     = this._shuffleString(selectedSet.letters);
+      this._wordList    = selectedSet.words;
+    }
   }
 
   _shuffleString(str) {
@@ -199,7 +224,16 @@ export default class JuggleScene extends Phaser.Scene {
     // ── Clean up on shutdown ──────────────────────────────────────────────────
     this.events.once('shutdown', () => {
       this.input.keyboard.off('keydown', this._keyHandler);
+      if (this._isMultiplayer) {
+        ['wordResult', 'scoreUpdate', 'roundEnd'].forEach(e => socketClient.offAll(e));
+      }
     });
+
+    // ── Multiplayer: live scoreboard + timer + socket handlers ────────────────
+    if (this._isMultiplayer) {
+      this._createMultiplayerUI();
+      this._registerSocketHandlers();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -321,6 +355,15 @@ export default class JuggleScene extends Phaser.Scene {
   _submitWord() {
     if (!this._word.length) return;
 
+    if (this._isMultiplayer) {
+      // ── Multiplayer: send to server; result comes back via wordResult ────────
+      if (this._roundEnded) return;
+      socketClient.emit('submitWord', { roomId: this._roomId, word: this._word });
+      this._resetDice();
+      return;
+    }
+
+    // ── Single-player: validate locally ─────────────────────────────────────
     if (this._foundWords.includes(this._word)) {
       this._showFeedback('ALREADY FOUND!', '#D4A017');
     } else if (this._wordList.has(this._word)) {
@@ -400,6 +443,203 @@ export default class JuggleScene extends Phaser.Scene {
         alpha:    0,
         duration: 400,
       });
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FRAME UPDATE — countdown timer (multiplayer only)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  update() {
+    if (!this._isMultiplayer || !this._startTime || !this._duration || this._roundEnded) return;
+
+    const remaining = Math.max(0, this._startTime + this._duration - Date.now());
+    const secs      = Math.ceil(remaining / 1000);
+
+    if (this._timerText) {
+      this._timerText.setText(String(secs));
+      const pct = remaining / this._duration;
+      if      (pct < 0.2) this._timerText.setColor('#CC3344');  // red  < 6 s
+      else if (pct < 0.5) this._timerText.setColor('#D4A017');  // amber < 15 s
+      else                this._timerText.setColor('#48C1C0');  // teal
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MULTIPLAYER UI — scoreboard + countdown timer
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  _createMultiplayerUI() {
+    // ── Countdown timer (top-centre of content area) ─────────────────────────
+    this._timerText = this.add.text(PANEL_CX, 100, '30', {
+      fontFamily:      "'Syncopate', monospace",
+      fontSize:        '48px',
+      fontStyle:       'bold',
+      color:           '#48C1C0',
+      stroke:          '#000000',
+      strokeThickness: 5,
+    }).setOrigin(0.5, 0.5);
+
+    // ── Scoreboard panel (left column) ───────────────────────────────────────
+    const n    = Math.min(this._players.length, 4);
+    const panH = n * SCORE_ROW + 50;
+    const panY = SCORE_Y0 + (n - 1) * SCORE_ROW / 2;
+
+    this.add.rectangle(SCORE_CX, panY, 210, panH, 0x060c14)
+      .setStrokeStyle(1, 0x2a6a6a, 0.9);
+
+    this.add.text(SCORE_CX, SCORE_Y0 - 26, 'SCORES', {
+      fontFamily:    'monospace',
+      fontSize:      '10px',
+      color:         '#2a6a6a',
+      letterSpacing: 3,
+    }).setOrigin(0.5, 0.5);
+
+    this._scoreTexts = [];
+    for (let i = 0; i < n; i++) {
+      this._scoreTexts.push(
+        this.add.text(SCORE_CX, SCORE_Y0 + i * SCORE_ROW, '', {
+          fontFamily: "'Syncopate', monospace",
+          fontSize:   '13px',
+          fontStyle:  'bold',
+          color:      '#48C1C0',
+        }).setOrigin(0.5, 0.5)
+      );
+    }
+
+    this._updateScoreboard();
+  }
+
+  // ── Redraw scoreboard rows, sorted by score descending ──────────────────────
+  _updateScoreboard() {
+    if (!this._scoreTexts) return;
+    const sorted = [...this._players].sort((a, b) => b.score - a.score);
+    sorted.slice(0, 4).forEach((p, i) => {
+      const isMe  = p.playerName === this._playerName;
+      const label = (isMe ? '▶ ' : '  ') + p.playerName + ':  ' + p.score;
+      this._scoreTexts[i]?.setText(label).setColor(isMe ? '#88ffff' : '#48C1C0');
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SOCKET HANDLERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  _registerSocketHandlers() {
+    socketClient.on('wordResult',  (data) => this._handleWordResult(data));
+    socketClient.on('scoreUpdate', (data) => this._handleScoreUpdate(data));
+    socketClient.on('roundEnd',    (data) => this._handleRoundEnd(data));
+  }
+
+  /** Server tells us whether our submitted word was valid. */
+  _handleWordResult(data) {
+    if (data.valid) {
+      this._foundWords.push(data.word);
+      this._showFeedback('✓ ' + data.word, '#22BB44');
+      this._updateFoundPanel();
+    } else if (data.alreadyFound) {
+      this._showFeedback('ALREADY FOUND!', '#D4A017');
+    } else {
+      this._showFeedback('✗ NOT A WORD', '#CC3344');
+      this.cameras.main.shake(200, 0.008);
+    }
+  }
+
+  /** Server broadcasts a player's new score. */
+  _handleScoreUpdate(data) {
+    const p = this._players.find(pl => pl.playerName === data.playerName);
+    if (p) p.score = data.score;
+    this._updateScoreboard();
+  }
+
+  /** Server says time is up — lock the game and show results. */
+  _handleRoundEnd(data) {
+    this._roundEnded = true;
+    // Disable all dice so no further clicks register
+    for (const die of this._dice) {
+      die.image.disableInteractive();
+    }
+    this._showVictoryScreen(data.scores);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VICTORY SCREEN
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  _showVictoryScreen(scores) {
+    const n     = Math.min(scores.length, 4);
+    const panH  = 90 + n * 46 + 60;   // header + rows + button area
+    const panCY = ROW_1_Y + panH / 2 - 10;
+
+    // Dark panel
+    this.add.rectangle(PANEL_CX, panCY, 580, panH, 0x060c14, 0.97)
+      .setStrokeStyle(2, 0x48C1C0, 1)
+      .setDepth(20);
+
+    // "ROUND OVER" heading
+    this.add.text(PANEL_CX, panCY - panH / 2 + 38, 'ROUND  OVER', {
+      fontFamily:      "'Syncopate', monospace",
+      fontSize:        '26px',
+      fontStyle:       'bold',
+      color:           '#48C1C0',
+      stroke:          '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5, 0.5).setDepth(21);
+
+    // Player rows
+    const medals  = ['1ST', '2ND', '3RD', '4TH'];
+    const rowY0   = panCY - panH / 2 + 86;
+
+    scores.slice(0, 4).forEach((p, i) => {
+      const isMe = p.playerName === this._playerName;
+      const y    = rowY0 + i * 46;
+      const col  = i === 0 ? '#FFD700' : '#48C1C0';
+
+      // Rank badge
+      this.add.text(PANEL_CX - 240, y, medals[i], {
+        fontFamily: "'Syncopate', monospace",
+        fontSize:   '11px',
+        fontStyle:  'bold',
+        color:      col,
+      }).setOrigin(0, 0.5).setDepth(21);
+
+      // Player name (with arrow for "you")
+      this.add.text(PANEL_CX - 185, y,
+        (isMe ? '▶ ' : '') + p.playerName, {
+        fontFamily: "'Syncopate', monospace",
+        fontSize:   '15px',
+        fontStyle:  'bold',
+        color:      isMe ? '#88ffff' : col,
+      }).setOrigin(0, 0.5).setDepth(21);
+
+      // Score
+      this.add.text(PANEL_CX + 240, y, p.score + ' pts', {
+        fontFamily: "'Syncopate', monospace",
+        fontSize:   '14px',
+        fontStyle:  'bold',
+        color:      col,
+      }).setOrigin(1, 0.5).setDepth(21);
+    });
+
+    // "BACK TO MENU" button
+    const btnY   = rowY0 + n * 46 + 18;
+    const btnBg  = this.add.rectangle(PANEL_CX, btnY, 300, 44, 0x1a3a3a)
+      .setStrokeStyle(2, 0x48C1C0, 1)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(21);
+    const btnLbl = this.add.text(PANEL_CX, btnY, 'BACK TO MENU', {
+      fontFamily: "'Syncopate', monospace",
+      fontSize:   '13px',
+      fontStyle:  'bold',
+      color:      '#48C1C0',
+    }).setOrigin(0.5, 0.5).setDepth(22);
+
+    btnBg.on('pointerover', () => { btnBg.setFillStyle(0x2a5555); btnLbl.setColor('#88ffff'); });
+    btnBg.on('pointerout',  () => { btnBg.setFillStyle(0x1a3a3a); btnLbl.setColor('#48C1C0'); });
+    btnBg.on('pointerdown', () => {
+      roomManager.leave();
+      this.scene.stop('GameBeamScene');
+      this.scene.start('MainScene');
     });
   }
 }

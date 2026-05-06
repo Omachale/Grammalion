@@ -245,6 +245,24 @@ export default class MainScene extends Phaser.Scene {
       },
     });
 
+    // ── Play Online button ────────────────────────────────────────────────────
+    // Bottom-right corner; always visible, launches the multiplayer lobby.
+    // Routes through GameBeamScene (same animation as single-player games).
+    const onlineBtn = this.add.text(canvasWidth - 20, canvasHeight - 20, '▶  PLAY ONLINE', {
+      fontFamily:      "'Syncopate', monospace",
+      fontSize:        '13px',
+      fontStyle:       'bold',
+      color:           '#48C1C0',
+      stroke:          '#000000',
+      strokeThickness: 3,
+    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
+    onlineBtn.on('pointerover',  () => onlineBtn.setColor('#88ffff'));
+    onlineBtn.on('pointerout',   () => onlineBtn.setColor('#48C1C0'));
+    onlineBtn.on('pointerdown',  () => {
+      this._flipSwitch.setEnabled(false);
+      this.scene.run('GameBeamScene', { targetScene: 'LobbyScene' });
+    });
+
     // ── Compatibility check ───────────────────────────────────────────────────
     this._checkCompatibility();
 

@@ -1,5 +1,6 @@
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
   entry: {
@@ -24,6 +25,11 @@ module.exports = {
     ],
   },
   plugins: [
+    new webpack.DefinePlugin({
+      // Injected at build time. Override by setting SERVER_URL env var before building.
+      // e.g.  SERVER_URL=https://your-app.onrender.com npm run build
+      __SERVER_URL__: JSON.stringify(process.env.SERVER_URL || 'http://localhost:3000'),
+    }),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/index.html',     to: 'index.html'     },

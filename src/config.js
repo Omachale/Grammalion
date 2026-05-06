@@ -9,13 +9,14 @@ import ReorderScene      from './scenes/ReorderScene';
 import WheelScene        from './scenes/WheelScene';
 import ScanLineScene     from './scenes/ScanLineScene';
 import JuggleScene       from './scenes/JuggleScene';
+import LobbyScene        from './scenes/LobbyScene';
 
 const config = {
   type: Phaser.AUTO,
   width: 1024,
   height: 768,
   backgroundColor: '#1a1a2e',
-  scene: [MainScene, GameBeamScene, GameScene, MultiChoiceScene, ResultsScene, CorrectionScene, ReorderScene, WheelScene, ScanLineScene, JuggleScene],
+  scene: [MainScene, GameBeamScene, GameScene, MultiChoiceScene, ResultsScene, CorrectionScene, ReorderScene, WheelScene, ScanLineScene, JuggleScene, LobbyScene],
   scale: {
     mode: Phaser.Scale.RESIZE,
   },
