@@ -9,11 +9,11 @@ const FLAVORS = [
 ];
 
 // Panel geometry — matches the sentence panel used in all game scenes
-const PANEL_X = 495;
+const PANEL_X = 312;
 const PANEL_Y = 130;
 const PANEL_W = 750;
 const PANEL_H = 490;
-const CX      = PANEL_X + PANEL_W / 2;   // 870  — display centre
+const CX      = PANEL_X + PANEL_W / 2;   // 687  — Display4 screen centre
 
 // Shared colours matching game scenes
 const C = {

@@ -41,7 +41,7 @@ const BTN_H   = 52;
 const BTN_GAP = 40;    // horizontal gap between the two buttons
 
 // OFFSET FORMULA: Game X = Display4 X + 106 (verified by manual positioning)
-const GAME_CENTER_X = 783;  // 408 + (750 / 2) = center of UI panels
+const GAME_CENTER_X = 687;  // 312 + (750 / 2) = centre of the Display4 screen area
 
 const TIMER_LIMITS = { Off: null, Slow: 12000, Medium: 7500, Fast: 4500 };
 
@@ -83,7 +83,7 @@ export default class MultiChoiceScene extends Phaser.Scene {
 
     // ── Sentence panel ──────────────────────────────────────────────────────
     // Centered at GAME_CENTER_X = 783, width 750, same as GameScene
-    const PANEL_X = 495, PANEL_Y = 143, PANEL_W = 750, PANEL_H = 180;
+    const PANEL_X = 312, PANEL_Y = 143, PANEL_W = 750, PANEL_H = 180;
     const sentencePanel = this.add.graphics();
     sentencePanel.fillStyle(0x48C1C0, 0.2);
     sentencePanel.fillRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
@@ -91,9 +91,9 @@ export default class MultiChoiceScene extends Phaser.Scene {
     sentencePanel.strokeRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
 
     // Sentence text (static panel, changes per question)
-    // Center the text to the sentence panel center: 495 + 375 = 870
+    // Center the text to the sentence panel center: 312 + 375 = 687
     // Panel center Y = 143 + 130/2 = 208
-    this._sentenceText = this.add.text(870, 208, '', {
+    this._sentenceText = this.add.text(687, 208, '', {
       fontSize: '20px',
       fontStyle: 'bold',
       color: '#48C1C0',
@@ -236,7 +236,7 @@ export default class MultiChoiceScene extends Phaser.Scene {
     // Create buttons dynamically based on how many options this question has
     const n      = q.options.length;
     const totalW = BTN_W * n + BTN_GAP * (n - 1);
-    const startX = 870 - totalW / 2;
+    const startX = 687 - totalW / 2;
     const btnY   = 350;
 
     for (let i = 0; i < n; i++) {

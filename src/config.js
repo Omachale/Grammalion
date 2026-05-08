@@ -13,12 +13,12 @@ import LobbyScene        from './scenes/LobbyScene';
 
 const config = {
   type: Phaser.AUTO,
-  width: 1024,
-  height: 768,
   backgroundColor: '#1a1a2e',
   scene: [MainScene, GameBeamScene, GameScene, MultiChoiceScene, ResultsScene, CorrectionScene, ReorderScene, WheelScene, ScanLineScene, JuggleScene, LobbyScene],
   scale: {
-    mode: Phaser.Scale.RESIZE,
+    mode:   Phaser.Scale.FIT,
+    width:  1374,
+    height: 768,
   },
   physics: {
     default: 'arcade',

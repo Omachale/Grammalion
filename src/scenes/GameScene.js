@@ -59,7 +59,7 @@ export default class GameScene extends Phaser.Scene {
 
     // ── Sentence panel (teal) ──────────────────────────────────────────────
     // OFFSET FORMULA: Game X = Display4 X + 106 (verified by manual positioning)
-    const sentencePanelX = 495;
+    const sentencePanelX = 312;
     const sentencePanelY = 143;
     const sentencePanelW = 750;
     const sentencePanelH = 180;

@@ -20,7 +20,7 @@ function shuffle(arr) {
 // A circular ring centred on screen. Sentence nodes sit evenly spaced on the
 // midpoint of the rim. The selected sentence is always at the top (-90°).
 
-const WHEEL_CX      = 870;
+const WHEEL_CX      = 687;
 const WHEEL_CY      = 448;
 const WHEEL_OUTER_R = 162;
 const WHEEL_INNER_R = 118;
@@ -42,7 +42,7 @@ const DEPTH_OVERLAY_FG   = 51;
 const DEPTH_OVERLAY_TEXT = 52;
 
 // OFFSET FORMULA: Game X = Display4 X + 106 (verified by manual positioning)
-const GAME_CENTER_X = 783;  // 408 + (750 / 2) = center of UI panels
+const GAME_CENTER_X = 687;  // 312 + (750 / 2) = centre of the Display4 screen area
 
 export default class WheelScene extends Phaser.Scene {
   constructor() {
@@ -110,14 +110,14 @@ export default class WheelScene extends Phaser.Scene {
     // ── Sentence panel ────────────────────────────────────────────────────────
     const panelGfx = this.add.graphics().setDepth(DEPTH_PANEL);
     panelGfx.fillStyle(0x48C1C0, 0.2);
-    panelGfx.fillRect(495, 143, 750, 130);
+    panelGfx.fillRect(312, 143, 750, 130);
     panelGfx.lineStyle(2, 0x48C1C0, 0.6);
-    panelGfx.strokeRect(495, 143, 750, 130);
+    panelGfx.strokeRect(312, 143, 750, 130);
 
     // Large readable text for the selected (top) sentence
-    // Center the text to the sentence panel center: 495 + 375 = 870
+    // Center the text to the sentence panel center: 312 + 375 = 687
     // Panel center Y = 143 + 130/2 = 208
-    this._sentenceText = this.add.text(870, 208, '', {
+    this._sentenceText = this.add.text(687, 208, '', {
       fontSize: '20px',
       fontStyle: 'bold',
       color: '#48C1C0',
@@ -180,7 +180,7 @@ export default class WheelScene extends Phaser.Scene {
   _buildMistakesCounter() {
     const N     = this._wheelValue;
     const total = N * BOX_W + (N - 1) * BOX_GAP;
-    this._mistakeStartX = 512 - total / 2;
+    this._mistakeStartX = 687 - total / 2;
 
     for (let i = 0; i < N; i++) {
       this._mistakeBoxes.push({ red: false });
@@ -240,9 +240,9 @@ export default class WheelScene extends Phaser.Scene {
     // Dim background — full screen, closes overlay on click
     const bg = this.add.graphics().setDepth(DEPTH_OVERLAY_BG);
     bg.fillStyle(0x000000, 0.75);
-    bg.fillRect(0, 0, 1024, 768);
+    bg.fillRect(0, 0, 1374, 768);
     bg.setInteractive(
-      new Phaser.Geom.Rectangle(0, 0, 1024, 768),
+      new Phaser.Geom.Rectangle(0, 0, 1374, 768),
       Phaser.Geom.Rectangle.Contains
     );
     bg.on('pointerdown', () => this._closeReviewOverlay());
@@ -250,9 +250,9 @@ export default class WheelScene extends Phaser.Scene {
     // Panel
     const panelGfx = this.add.graphics().setDepth(DEPTH_OVERLAY_FG);
     panelGfx.fillStyle(0x2C1F0E, 1);
-    panelGfx.fillRect(162, 100, 700, 568);
+    panelGfx.fillRect(337, 100, 700, 568);
     panelGfx.lineStyle(2, 0xD4A017, 1);
-    panelGfx.strokeRect(162, 100, 700, 568);
+    panelGfx.strokeRect(337, 100, 700, 568);
 
     // Title
     const title = this.add.text(GAME_CENTER_X, 135, 'INCORRECT PICKS', {
@@ -261,7 +261,7 @@ export default class WheelScene extends Phaser.Scene {
 
     // Divider line
     panelGfx.lineStyle(1, 0x4A3010, 0.8);
-    panelGfx.lineBetween(182, 158, 842, 158);
+    panelGfx.lineBetween(357, 158, 1017, 158);
 
     // List items
     const listObjs = [];
@@ -272,11 +272,11 @@ export default class WheelScene extends Phaser.Scene {
     } else {
       this._reviewList.forEach((sentence, i) => {
         const y = 178 + i * 36;
-        const label = this.add.text(182, y, `${i + 1}.`, {
+        const label = this.add.text(357, y, `${i + 1}.`, {
           fontSize: '12px', color: '#6A5A3A', fontFamily: 'monospace',
         }).setOrigin(0, 0).setDepth(DEPTH_OVERLAY_TEXT);
 
-        const text = this.add.text(208, y, sentence, {
+        const text = this.add.text(383, y, sentence, {
           fontSize: '13px', color: '#F0E8D0', fontFamily: 'monospace',
           wordWrap: { width: 620, useAdvancedWrap: true },
         }).setOrigin(0, 0).setDepth(DEPTH_OVERLAY_TEXT);

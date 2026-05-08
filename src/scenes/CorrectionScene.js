@@ -34,7 +34,7 @@ const C = {
 const TIMER_LIMITS = { Off: null, Slow: 12000, Medium: 7500, Fast: 4500 };
 
 // OFFSET FORMULA: Game X = Display4 X + 106 (verified by manual positioning)
-const GAME_CENTER_X = 783;  // 408 + (750 / 2) = center of UI panels
+const GAME_CENTER_X = 687;  // 312 + (750 / 2) = centre of the Display4 screen area
 
 // ─── Vial fraction for a given elapsed/limit ratio ───────────────────────────
 function vialFraction(elapsed, limit) {
@@ -85,7 +85,7 @@ export default class CorrectionScene extends Phaser.Scene {
     this._questions = shuffle(correction).slice(0, this._rounds);
 
     // ── Question counter ────────────────────────────────────────────────────
-    this._counterText = this.add.text(512, 50, '', {
+    this._counterText = this.add.text(687, 50, '', {
       fontSize: '16px',
       color: C.brass,
       fontFamily: 'monospace',
@@ -95,9 +95,9 @@ export default class CorrectionScene extends Phaser.Scene {
     // ── Sentence panel ──────────────────────────────────────────────────────
     const sentencePanel = this.add.graphics();
     sentencePanel.fillStyle(0x48C1C0, 0.2);
-    sentencePanel.fillRect(495, 143, 750, 130);
+    sentencePanel.fillRect(312, 143, 750, 130);
     sentencePanel.lineStyle(2, 0x48C1C0, 0.6);
-    sentencePanel.strokeRect(495, 143, 750, 130);
+    sentencePanel.strokeRect(312, 143, 750, 130);
 
     // ── Timer bar ────────────────────────────────────────────────────────────
     const timerBgBar = this.add.graphics();
@@ -111,11 +111,11 @@ export default class CorrectionScene extends Phaser.Scene {
 
     const inputBg = this.add.graphics();
     inputBg.fillStyle(C.inputBg, 1);
-    inputBg.fillRect(312, 246, 400, 48);
+    inputBg.fillRect(487, 246, 400, 48);
     inputBg.lineStyle(2, C.inputBorder, 1);
-    inputBg.strokeRect(312, 246, 400, 48);
+    inputBg.strokeRect(487, 246, 400, 48);
 
-    const inputLabel = this.add.text(512, 237, 'CORRECT THE VERB AND PRESS ENTER', {
+    const inputLabel = this.add.text(687, 237, 'CORRECT THE VERB AND PRESS ENTER', {
       fontSize: '13px',
       fontStyle: 'bold',
       color: '#48C1C0',
@@ -123,7 +123,7 @@ export default class CorrectionScene extends Phaser.Scene {
       letterSpacing: 2,
     }).setOrigin(0.5, 1);
 
-    this._inputText = this.add.text(512, 270, '', {
+    this._inputText = this.add.text(687, 270, '', {
       fontSize: '24px',
       fontStyle: 'bold',
       color: '#48C1C0',
@@ -134,7 +134,7 @@ export default class CorrectionScene extends Phaser.Scene {
 
     // ── Feedback text ────────────────────────────────────────────────────────
     // feedbackY = inputContainer bottom (y=294) + 30 = 324
-    this._feedbackText = this.add.text(512, 324, '', {
+    this._feedbackText = this.add.text(687, 324, '', {
       fontSize: '20px',
       fontStyle: 'bold',
       color: C.green,
@@ -239,7 +239,7 @@ export default class CorrectionScene extends Phaser.Scene {
     const totalWidth = textObjects.reduce((sum, t) => sum + t.width, 0)
                      + (words.length - 1) * wordGap;
 
-    let cursorX = 512 - totalWidth / 2;
+    let cursorX = 687 - totalWidth / 2;
 
     textObjects.forEach((wordText, wordIndex) => {
       const originalY = originY;

@@ -11,13 +11,12 @@ const TILE_GAP    = 8;
 const MAX_PER_ROW = 8;
 
 // ─── Panel geometry (matches other game scenes) ───────────────────────────────
-// OFFSET FORMULA: Game X = Display4 X + 106 (verified by manual positioning)
-const PANEL_X   = 408;
+const PANEL_X   = 312;
 const PANEL_Y   = 80;
 const PANEL_W   = 750;
 const PANEL_H   = 130;
-const PANEL_MID = PANEL_X + PANEL_W / 2;   // 783
-const GAME_CENTER_X = 783;
+const PANEL_MID = PANEL_X + PANEL_W / 2;   // 687 = Display4 screen centre
+const GAME_CENTER_X = 687;
 
 // ─── Timer limits: 3× the regular limits, scaled by word count ────────────────
 const TIMER_LIMITS = { Off: null, Slow: 36000, Medium: 22500, Fast: 13500 };
@@ -94,9 +93,9 @@ export default class ReorderScene extends Phaser.Scene {
     // ── Sentence panel ───────────────────────────────────────────────────────
     const panelGfx = this.add.graphics();
     panelGfx.fillStyle(0x48C1C0, 0.2);
-    panelGfx.fillRect(495, 143, 750, 130);
+    panelGfx.fillRect(312, 143, 750, 130);
     panelGfx.lineStyle(2, 0x48C1C0, 0.6);
-    panelGfx.strokeRect(495, 143, 750, 130);
+    panelGfx.strokeRect(312, 143, 750, 130);
 
     // ── Timer bar ────────────────────────────────────────────────────────────
     // _timerLimit will be set dynamically in _showQuestion() based on word count
