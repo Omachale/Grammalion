@@ -10,10 +10,10 @@
 
 export const PANEL_CX = 687;   // visual centre of the Display4 content area (= 1374/2)
 
-export const POWER_BAR_X     = 132;
+export const POWER_BAR_X     = 397;   // 132 + (590 * 0.90 / 2) — centre at old right edge
 export const POWER_BAR_Y     = 385;
 export const POWER_BAR_SCALE = 0.90;
 
-export const MENU_BTN_X     = 1207;
+export const MENU_BTN_X     = 1222;   // 1207 + 15
 export const MENU_BTN_Y     = 590;
 export const MENU_BTN_SCALE = 0.5;
