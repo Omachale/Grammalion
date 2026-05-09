@@ -826,5 +826,27 @@
         "TOLD"
       ]
     }
+  ],
+  "WORD_SET_7": [
+    {
+      "letters": "PARENTS",
+      "words": [
+        "ANT","APE","APT","ARE","ATE","EAR","EAT","ERA","NAP","NET",
+        "PAN","PAR","PAT","PEA","PEN","PER","PET","RAN","RAP","RAT",
+        "REP","SAP","SAT","SET","TAN","TAP","TAR","TEA","TEN",
+        "ANTE","ANTS","APES","EARN","EARS","EATS","NAPE","NAPS","NEAR","NEAP",
+        "NEAT","NEST","NETS","PANE","PANS","PANT","PARE","PARS","PART","PAST",
+        "PATE","PATS","PEAR","PEAT","PENS","PERT","PEST","PETS","RANT","RAPS",
+        "RAPT","RATS","REAP","RENT","REPS","REST","SANE","SATE","SNAP","SPAN",
+        "SPAR","SPAT","STEP","TANS","TAPE","TAPS","TARE","TARN","TARP","TARS",
+        "TEAS","TENS","TERN","TRAP",
+        "ANTES","ASPEN","EARNS","NAPES","NEARS","NEAPS","PANES","PANTS","PARES","PARSE",
+        "PARTS","PASTE","PATER","PATES","PEARS","PEATS","PRATE","RANTS","REAPS","RENTS",
+        "SANER","SNARE","SPARE","SPATE","SPENT","STARE","STERN","TAPER","TAPES","TARES",
+        "TARNS","TARPS","TEARS","TERNS","TRAPS",
+        "ASTERN","ENTRAP","PARENT","PANTER","PATERS","PRATES","REPAST","TAPERS",
+        "ARPENTS","ENTRAPS","PANTERS","PARENTS","PASTERN","TREPANS"
+      ]
+    }
   ]
 }

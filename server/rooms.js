@@ -12,6 +12,10 @@ const WORD_SET_6 = wordsetData.WORD_SET_6.map(s => ({
   letters: s.letters,
   words:   new Set(s.words),
 }));
+const WORD_SET_7 = wordsetData.WORD_SET_7.map(s => ({
+  letters: s.letters,
+  words:   new Set(s.words),
+}));
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
 const rooms = new Map();          // roomId  → room object
@@ -65,7 +69,7 @@ function createRoom(socketId, playerName, uuid, letterCount = 6) {
     roomId,
     hostId:      socketId,
     status:      'waiting',       // 'waiting' | 'playing' | 'ended'
-    letterCount: letterCount === 5 ? 5 : 6,
+    letterCount: letterCount === 5 ? 5 : letterCount === 7 ? 7 : 6,
     wordSet:     null,            // populated on startGame
     letters:     null,            // shuffled letters string, populated on startGame
     startTime:   null,
@@ -138,7 +142,9 @@ function startGame(roomId) {
   if (!room)                     throw new Error('Room not found.');
   if (room.status !== 'waiting') throw new Error('Game already started.');
 
-  const pool = room.letterCount === 5 ? WORD_SET_5 : WORD_SET_6;
+  const pool = room.letterCount === 5 ? WORD_SET_5
+             : room.letterCount === 7 ? WORD_SET_7
+             : WORD_SET_6;
   const selected = pool[Math.floor(Math.random() * pool.length)];
 
   room.wordSet   = selected;

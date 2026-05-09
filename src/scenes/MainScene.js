@@ -55,7 +55,7 @@ const COMPATIBLE = {
 
 const ROUNDS_NORMAL  = ['5', '10', '15'];
 const ROUNDS_WHEEL   = ['5 Rounds', '8 Rounds', '10 Rounds', '8 Mistakes', '5 Mistakes', '3 Mistakes', '2 Mistakes', '1 Mistake'];
-const ROUNDS_JUGGLE  = ['5 Letters', '6 Letters'];
+const ROUNDS_JUGGLE  = ['5 Letters', '6 Letters', '7 Letters'];
 
 export default class MainScene extends Phaser.Scene {
   constructor() {

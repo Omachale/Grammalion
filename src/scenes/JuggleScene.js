@@ -49,7 +49,7 @@ export default class JuggleScene extends Phaser.Scene {
 
   init(data) {
     const raw = data.rounds || '6 Letters';
-    this._letterCount = raw.startsWith('5') ? 5 : 6;
+    this._letterCount = raw.startsWith('5') ? 5 : raw.startsWith('7') ? 7 : 6;
 
     // Store multiplayer context (used by create() and _submitWord())
     this._isMultiplayer = !!data.isMultiplayer;
@@ -69,6 +69,10 @@ export default class JuggleScene extends Phaser.Scene {
       letters: set.letters,
       words: new Set(set.words)
     }));
+    const WORD_SET_7 = wordsets.WORD_SET_7.map(set => ({
+      letters: set.letters,
+      words: new Set(set.words)
+    }));
 
     if (data.letters) {
       // ── Multiplayer: server provided the shuffled letters ─────────────────
@@ -76,12 +80,16 @@ export default class JuggleScene extends Phaser.Scene {
       // e.g. server sends "ENIHS" → sorted "EHINS" matches "SHINE" sorted "EHINS"
       this._letters = data.letters.toUpperCase();
       const sortedProvided = this._letters.split('').sort().join('');
-      const pool    = this._letterCount === 5 ? WORD_SET_5 : WORD_SET_6;
+      const pool    = this._letterCount === 5 ? WORD_SET_5
+                   : this._letterCount === 7 ? WORD_SET_7
+                   : WORD_SET_6;
       const matching = pool.find(s => s.letters.split('').sort().join('') === sortedProvided);
       this._wordList = matching ? matching.words : new Set();
     } else {
       // ── Single player: pick a random set and shuffle ──────────────────────
-      const wordSets    = this._letterCount === 5 ? WORD_SET_5 : WORD_SET_6;
+      const wordSets    = this._letterCount === 5 ? WORD_SET_5
+                       : this._letterCount === 7 ? WORD_SET_7
+                       : WORD_SET_6;
       const selectedSet = wordSets[Math.floor(Math.random() * wordSets.length)];
       this._letters     = this._shuffleString(selectedSet.letters);
       this._wordList    = selectedSet.words;
@@ -261,8 +269,24 @@ export default class JuggleScene extends Phaser.Scene {
         x: PANEL_CX + DIE_STEP / 2,
         y: ROW_2_Y,
       });
+    } else if (count === 7) {
+      // 4 top + 3 staggered bottom (same triangular pattern as 5-letter)
+      for (let i = 0; i < 4; i++) {
+        positions.push({
+          letter: letters[i],
+          x: PANEL_CX + (i - 1.5) * DIE_STEP,
+          y: ROW_1_Y,
+        });
+      }
+      for (let i = 0; i < 3; i++) {
+        positions.push({
+          letter: letters[4 + i],
+          x: PANEL_CX + (i - 1) * DIE_STEP,
+          y: ROW_2_Y,
+        });
+      }
     } else {
-      // 3×2 aligned grid
+      // 3×2 aligned grid (6 letters)
       for (let i = 0; i < 6; i++) {
         const row = Math.floor(i / 3);
         const col = i % 3;
