@@ -12,8 +12,9 @@
  */
 
 import * as Phaser from 'phaser';
-import socketClient from '../network/SocketClient';
-import roomManager  from '../network/RoomManager';
+import socketClient      from '../network/SocketClient';
+import roomManager       from '../network/RoomManager';
+import GameSelector, { COMPATIBLE } from '../ui/GameSelector';
 
 // ── Lobby form HTML ───────────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ const LOBBY_HTML = `
         font-size:13px;font-weight:bold;padding:13px;
         cursor:pointer;letter-spacing:2px;display:block;margin-bottom:14px;
       ">
-      ▶  CREATE NEW ROOM
+      CREATE ROOM
     </button>
     <div style="font-size:10px;letter-spacing:2px;color:#2a6a6a;text-align:center;margin-bottom:12px;">
       — OR JOIN EXISTING —
@@ -81,6 +82,14 @@ const LOBBY_HTML = `
         JOIN
       </button>
     </div>
+    <button id="back-html-btn" style="
+        width:100%;background:#1a3a3a;border:2px solid #48C1C0;
+        color:#48C1C0;font-family:Syncopate,monospace;
+        font-size:12px;font-weight:bold;padding:10px 14px;
+        cursor:pointer;letter-spacing:1px;display:block;margin-top:10px;
+      ">
+      ◀  BACK
+    </button>
     <div id="name-error" style="
         color:#CC3344;font-size:11px;letter-spacing:1px;
         margin-top:10px;min-height:16px;
@@ -171,8 +180,7 @@ export default class LobbyScene extends Phaser.Scene {
   // ── Preload ────────────────────────────────────────────────────────────────
 
   preload() {
-    // No assets to load — GameBeamScene already loaded display4 and runs
-    // behind this scene providing the background.
+    this.load.image('rooms-btn', 'assets/images/game/Rooms.jpg');
   }
 
   // ── Create ─────────────────────────────────────────────────────────────────
@@ -181,10 +189,31 @@ export default class LobbyScene extends Phaser.Scene {
     const cw = this.cameras.main.width;
     const ch = this.cameras.main.height;
 
-    // No background rendered here — GameBeamScene is running behind us
-    // with Display4.png already showing, exactly as in single-player mode.
+    // ── Background UI + game-selector dials ──────────────────────────────────
+    // Compute the same contain-fit scale that MainScene uses so the dials
+    // land exactly in their dial-hole artwork.
+    const BG_IMG_W  = 1570;
+    const BG_IMG_H  = 868;
+    const bgScale   = Math.min(cw / BG_IMG_W, ch / BG_IMG_H);
+    const bgXOffset = (cw - BG_IMG_W * bgScale) / 2;
+    const bgYOffset = (ch - BG_IMG_H * bgScale) / 2;
 
-    // ── Title ─────────────────────────────────────────────────────────────────
+    // Added FIRST so that the title text and back button (added next) render
+    // on top of the background image rather than being hidden behind it.
+    this._bgImage = this.add.image(cw / 2, ch / 2, 'bg').setScale(bgScale);
+
+    // Scan-line tile texture (created once; survives scene restarts).
+    if (!this.textures.exists('dial-scanlines')) {
+      const slGfx = this.make.graphics({ add: false });
+      slGfx.fillStyle(0x000000, 0);
+      slGfx.fillRect(0, 0, 1, 4);
+      slGfx.fillStyle(0x000000, 0.38);
+      slGfx.fillRect(0, 4, 1, 1);
+      slGfx.generateTexture('dial-scanlines', 1, 5);
+      slGfx.destroy();
+    }
+
+    // ── Title (above background) ───────────────────────────────────────────────
     this.add.text(cw / 2, 54, 'MULTIPLAYER', {
       fontFamily:      "'Syncopate', monospace",
       fontSize:        '26px',
@@ -194,18 +223,34 @@ export default class LobbyScene extends Phaser.Scene {
       strokeThickness: 4,
     }).setOrigin(0.5, 0.5);
 
-    // ── Back button ────────────────────────────────────────────────────────
-    const backBtn = this.add.text(24, 24, '◀  BACK', {
-      fontFamily: "'Syncopate', monospace",
-      fontSize:   '12px',
-      color:      '#2a6a6a',
-    }).setOrigin(0, 0).setInteractive({ useHandCursor: true });
-    backBtn.on('pointerover',  () => backBtn.setColor('#48C1C0'));
-    backBtn.on('pointerout',   () => backBtn.setColor('#2a6a6a'));
+    // ── Single Player button (bottom-right; mirrors "Play Online" in MainScene) ──
+    const backBtn = this.add.text(cw - 20, ch - 20, '◀  SINGLE PLAYER', {
+      fontFamily:      "'Syncopate', monospace",
+      fontSize:        '13px',
+      fontStyle:       'bold',
+      color:           '#48C1C0',
+      stroke:          '#000000',
+      strokeThickness: 3,
+    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
+    backBtn.on('pointerover',  () => backBtn.setColor('#88ffff'));
+    backBtn.on('pointerout',   () => backBtn.setColor('#48C1C0'));
     backBtn.on('pointerdown',  () => this._leaveAndGoBack());
 
-    // ── Mount HTML overlay ────────────────────────────────────────────────────
-    this._mountOverlay();
+    this._selector = new GameSelector(this, bgScale, bgXOffset, bgYOffset, {
+      timerOptions: ['Off', 'On'],
+    });
+
+    // ── ROOMS button — image-based button, opens the create/join overlay on demand
+    this._roomsBtn = this.add.image(
+      Math.round(bgXOffset + 775 * bgScale),
+      Math.round(bgYOffset + 170 * bgScale),
+      'rooms-btn'
+    ).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
+    // Scale to roughly match the visual prominence of the start button
+    this._roomsBtn.setScale(0.45);
+    this._roomsBtn.on('pointerover',  () => this._roomsBtn.setAlpha(0.8));
+    this._roomsBtn.on('pointerout',   () => this._roomsBtn.setAlpha(1.0));
+    this._roomsBtn.on('pointerdown',  () => this._showRoomsOverlay());
 
     // ── Connect to server ─────────────────────────────────────────────────────
     socketClient.connect();
@@ -257,6 +302,7 @@ export default class LobbyScene extends Phaser.Scene {
       codeInput:     q('code-input'),
       createBtn:     q('create-btn'),
       joinBtn:       q('join-btn'),
+      backHtmlBtn:   q('back-html-btn'),
       nameError:     q('name-error'),
       namePanel:     q('name-panel'),
       roomPanel:     q('room-panel'),
@@ -272,10 +318,11 @@ export default class LobbyScene extends Phaser.Scene {
     };
 
     // Button click listeners
-    this._el.createBtn.addEventListener('click', () => this._handleCreate());
-    this._el.joinBtn.addEventListener(  'click', () => this._handleJoin());
-    this._el.startBtn.addEventListener( 'click', () => this._handleStart());
-    this._el.leaveBtn.addEventListener( 'click', () => this._leaveAndGoBack());
+    this._el.createBtn.addEventListener(  'click', () => this._handleCreate());
+    this._el.joinBtn.addEventListener(    'click', () => this._handleJoin());
+    this._el.startBtn.addEventListener(   'click', () => this._handleStart());
+    this._el.leaveBtn.addEventListener(   'click', () => this._handleLeaveRoom());
+    this._el.backHtmlBtn.addEventListener('click', () => this._hideRoomsOverlay());
 
     // Allow pressing Enter in either input
     this._el.nameInput.addEventListener('keydown', e => {
@@ -286,13 +333,69 @@ export default class LobbyScene extends Phaser.Scene {
     });
   }
 
+  // ── Rooms overlay show / hide ──────────────────────────────────────────────
+
+  /** Open the create/join overlay. Lazy-mounts it on first call. */
+  _showRoomsOverlay() {
+    if (!this._overlay) this._mountOverlay();
+    this._overlay.style.display = 'flex';
+    if (this._roomsBtn) this._roomsBtn.setVisible(false);
+  }
+
+  /** Close the overlay and return to the dials view. */
+  _hideRoomsOverlay() {
+    if (this._overlay) this._overlay.style.display = 'none';
+    if (this._bgImage)  this._bgImage.setVisible(true);
+    if (this._selector) this._selector.setVisible(true);
+    if (this._roomsBtn) this._roomsBtn.setVisible(true);
+  }
+
+  /** Leave the current server room and return to the name-entry panel. */
+  _handleLeaveRoom() {
+    roomManager.leave();
+    // Restore the background and dials (hidden by _showRoomPanel)
+    if (this._bgImage)  this._bgImage.setVisible(true);
+    if (this._selector) this._selector.setVisible(true);
+    // Back to name panel inside the overlay (ROOMS button stays hidden —
+    // the overlay is still open so the player can create or join again)
+    if (this._el.roomPanel)   this._el.roomPanel.style.display   = 'none';
+    if (this._el.namePanel)   this._el.namePanel.style.display   = 'block';
+    if (this._el.startingMsg) this._el.startingMsg.style.display = 'none';
+    this._setBusy(false);
+    this._showError('');
+  }
+
   // ── Button handlers ────────────────────────────────────────────────────────
 
   _handleCreate() {
+    if (!socketClient.connected) {
+      this._showError('Not connected to server — check the server is running.');
+      return;
+    }
+    const { grammar, task, rounds, timer } = this._selector.getSelections();
+    const isJuggle      = grammar === 'Juggle';
+    const isMultichoice = task === 'Multichoice' &&
+                          (COMPATIBLE[grammar] || new Set()).has('Multichoice');
+
+    if (!isJuggle && !isMultichoice) {
+      this._showError('Not available online yet.');
+      return;
+    }
+
     const name = this._validateName();
     if (!name) return;
+
     roomManager.setPlayer(name, socketClient.uuid);
-    roomManager.create(6);
+
+    if (isJuggle) {
+      const letterCount = parseInt(rounds, 10);  // '5 Letters' → 5
+      roomManager.create(letterCount, 'juggle');
+    } else {
+      const questionCount = parseInt(rounds, 10);  // 5, 10, or 15
+      const timerOn       = timer !== 'Off';        // 'On' → timed round; 'Off' → finish-to-end
+      roomManager.create(0, 'multichoice', { grammar, task, questionCount, timerOn });
+    }
+
     this._setBusy(true);
   }
 
@@ -323,8 +426,9 @@ export default class LobbyScene extends Phaser.Scene {
     return raw;
   }
 
-  _showError(msg) { this._el.nameError.textContent = msg; }
+  _showError(msg) { if (this._el.nameError) this._el.nameError.textContent = msg; }
   _setBusy(b)     {
+    if (!this._el.createBtn) return;
     this._el.createBtn.disabled = b;
     this._el.joinBtn.disabled   = b;
   }
@@ -338,6 +442,11 @@ export default class LobbyScene extends Phaser.Scene {
   // ── Socket handlers ────────────────────────────────────────────────────────
 
   _registerSocketHandlers() {
+    // Purge any stale handlers from a previous scene lifecycle before adding fresh ones
+    ['connect','disconnect','roomCreated','roomJoined',
+     'playerJoined','playerLeft','roundStart','roomReset','error',
+    ].forEach(e => socketClient.offAll(e));
+
     socketClient.on('connect',    () => this._setConnStatus('CONNECTED  ●', '#22BB44'));
     socketClient.on('disconnect', () => this._setConnStatus('DISCONNECTED  ○', '#CC3344'));
 
@@ -389,6 +498,11 @@ export default class LobbyScene extends Phaser.Scene {
   // ── Room panel UI ──────────────────────────────────────────────────────────
 
   _showRoomPanel(roomId, players, isHost) {
+    // Hide game-selector UI — player no longer needs to change settings
+    if (this._bgImage)  this._bgImage.setVisible(false);
+    if (this._selector) this._selector.setVisible(false);
+    if (this._roomsBtn) this._roomsBtn.setVisible(false);
+
     this._el.namePanel.style.display = 'none';
     this._el.roomPanel.style.display = 'block';
     this._el.roomCode.textContent    = roomId;
@@ -437,19 +551,39 @@ export default class LobbyScene extends Phaser.Scene {
 
     this.time.delayedCall(800, () => {
       this._cleanup();
-      // Run JuggleScene alongside GameBeamScene (which keeps providing the
-      // background), exactly like the single-player path does.
-      this.scene.run('JuggleScene', {
-        letters:       data.letters,
-        rounds:        roomManager.letterCount === 5 ? '5 Letters' : '6 Letters',
-        duration:      data.duration,
-        startTime:     data.startTime,
-        isMultiplayer: true,
-        roomId:        roomManager.roomId,
-        playerName:    roomManager.playerName,
-        players:       roomManager.players,
-      });
-      // Stop LobbyScene now that the game is running
+
+      const { letterCount, roomId, playerName, players } = roomManager;
+      const gameMode  = data.gameMode || roomManager.gameMode;  // server-authoritative; roomManager as fallback
+      const roundsStr = `${letterCount} Letters`;
+
+      if (gameMode === 'juggle') {
+        // Run JuggleScene alongside GameBeamScene (which keeps providing the
+        // Display4 background), exactly like the single-player path does.
+        this.scene.run('JuggleScene', {
+          letters:       data.letters,
+          rounds:        roundsStr,
+          duration:      data.duration,
+          startTime:     data.startTime,
+          isMultiplayer: true,
+          roomId,
+          playerName,
+          players,
+        });
+      } else if (gameMode === 'multichoice') {
+        this.scene.run('MultiChoiceScene', {
+          questions:     data.questions,
+          grammar:       roomManager.grammar,
+          rounds:        roomManager.questionCount,
+          timer:         roomManager.timerOn ? 'On' : 'Off',
+          duration:      data.duration,
+          startTime:     data.startTime,
+          isMultiplayer: true,
+          roomId,
+          playerName,
+          players,
+        });
+      }
+
       this.scene.stop('LobbyScene');
     });
   }
@@ -464,9 +598,21 @@ export default class LobbyScene extends Phaser.Scene {
     this.scene.start('MainScene');
   }
 
+  // ── Per-frame update ───────────────────────────────────────────────────────
+
+  update(_time, delta) {
+    if (this._selector) this._selector.update(delta);
+  }
+
   // ── Cleanup ────────────────────────────────────────────────────────────────
 
   _cleanup() {
+    // Tear down game-selector Phaser objects
+    if (this._selector) {
+      this._selector.destroy();
+      this._selector = null;
+    }
+
     // Remove HTML overlay
     if (this._overlay && this._overlay.parentNode) {
       this._overlay.parentNode.removeChild(this._overlay);

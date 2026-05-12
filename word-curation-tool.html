@@ -390,6 +390,7 @@
         <button id="load-dict-btn" class="open-file-btn" style="background: #ff9800; display: none;">Load Dictionary</button>
         <button id="gen-5-letter-btn" class="open-file-btn" style="background: #4caf50; display: none;">Generate New 5-Letter Set</button>
         <button id="gen-6-letter-btn" class="open-file-btn" style="background: #4caf50; display: none;">Generate New 6-Letter Set</button>
+        <button id="gen-7-letter-btn" class="open-file-btn" style="background: #4caf50; display: none;">Generate New 7-Letter Set</button>
       </div>
       <input type="file" id="file-fallback" accept=".json" style="display: none;" />
       <input type="file" id="dict-fallback" accept=".txt" style="display: none;" />
@@ -437,6 +438,7 @@
     const loadDictBtn = document.getElementById('load-dict-btn');
     const gen5LetterBtn = document.getElementById('gen-5-letter-btn');
     const gen6LetterBtn = document.getElementById('gen-6-letter-btn');
+    const gen7LetterBtn = document.getElementById('gen-7-letter-btn');
     const fileFallback = document.getElementById('file-fallback');
     const dictFallback = document.getElementById('dict-fallback');
     const statusEl = document.getElementById('status');
@@ -454,6 +456,7 @@
     loadDictBtn.addEventListener('click', handleLoadDictionary);
     gen5LetterBtn.addEventListener('click', () => handleGenerateNewSet(5));
     gen6LetterBtn.addEventListener('click', () => handleGenerateNewSet(6));
+    gen7LetterBtn.addEventListener('click', () => handleGenerateNewSet(7));
     fileFallback.addEventListener('change', handleFileFallback);
     dictFallback.addEventListener('change', handleDictFallback);
     resetBtn.addEventListener('click', handleReset);
@@ -520,8 +523,9 @@
           loadDictBtn.style.display = 'inline-block';
           gen5LetterBtn.style.display = 'inline-block';
           gen6LetterBtn.style.display = 'inline-block';
+          gen7LetterBtn.style.display = 'inline-block';
           showStatus(
-            `Opened ${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length} word sets from ${file.name}`
+            `Opened ${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length + (wordsets.WORD_SET_7 || []).length} word sets from ${file.name}`
           );
           resetBtn.style.display = 'inline-block';
           saveBtn.style.display = 'inline-block';
@@ -555,8 +559,9 @@
           loadDictBtn.style.display = 'inline-block';
           gen5LetterBtn.style.display = 'inline-block';
           gen6LetterBtn.style.display = 'inline-block';
+          gen7LetterBtn.style.display = 'inline-block';
           showStatus(
-            `Opened ${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length} word sets from ${file.name} (fallback mode — export to save)`
+            `Opened ${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length + (wordsets.WORD_SET_7 || []).length} word sets from ${file.name} (fallback mode — export to save)`
           );
           resetBtn.style.display = 'inline-block';
           saveBtn.style.display = 'inline-block';
@@ -653,9 +658,10 @@
           loadDictBtn.style.display = 'inline-block';
           gen5LetterBtn.style.display = 'inline-block';
           gen6LetterBtn.style.display = 'inline-block';
+          gen7LetterBtn.style.display = 'inline-block';
           resetBtn.style.display = 'inline-block';
           saveBtn.style.display = 'inline-block';
-          showStatus(`Auto-loaded wordsets from: ${storedName || 'Unknown'} (${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length} sets)`);
+          showStatus(`Auto-loaded wordsets from: ${storedName || 'Unknown'} (${(wordsets.WORD_SET_5 || []).length + (wordsets.WORD_SET_6 || []).length + (wordsets.WORD_SET_7 || []).length} sets)`);
         }
       } catch (err) {
         console.error('Failed to load wordsets from storage:', err);
@@ -826,7 +832,8 @@
       const wordUpper = word.toUpperCase();
       const allSets = [
         ...(wordsets.WORD_SET_5 || []),
-        ...(wordsets.WORD_SET_6 || [])
+        ...(wordsets.WORD_SET_6 || []),
+        ...(wordsets.WORD_SET_7 || [])
       ];
       return allSets.some(set => set.letters === wordUpper);
     }
@@ -840,7 +847,8 @@
       const wordLength = word.length;
       const allSets = [
         ...(wordsets.WORD_SET_5 || []),
-        ...(wordsets.WORD_SET_6 || [])
+        ...(wordsets.WORD_SET_6 || []),
+        ...(wordsets.WORD_SET_7 || [])
       ];
       return allSets.some(set =>
         set.letters.length === wordLength &&
@@ -1230,6 +1238,10 @@
         allSets.push({ type: 'WORD_SET_6', index: idx, letters: set.letters });
       });
 
+      (wordsets.WORD_SET_7 || []).forEach((set, idx) => {
+        allSets.push({ type: 'WORD_SET_7', index: idx, letters: set.letters });
+      });
+
       allSets.forEach((item) => {
         const btn = document.createElement('button');
         btn.className = 'base-word-btn';
@@ -1285,12 +1297,6 @@
         return;
       }
 
-      // Check if in dictionary
-      if (dictionary && !dictionary.has(plural.toLowerCase())) {
-        showStatus(`"${plural}" not found in dictionary`, true);
-        return;
-      }
-
       // Check if already in list
       if (allWords.includes(plural)) {
         showStatus(`"${plural}" already in the list`, true);
@@ -1337,12 +1343,6 @@
         return;
       }
 
-      // Check if in dictionary
-      if (dictionary && !dictionary.has(word.toLowerCase())) {
-        showStatus(`"${word}" not found in dictionary`, true);
-        return;
-      }
-
       // Check if already in list
       if (allWords.includes(word)) {
         showStatus(`"${word}" already in the list`, true);
@@ -1374,7 +1374,7 @@
 
       const rejectedWords = changes[`${setType}_${index}`] || [];
 
-      editorTitle.innerHTML = `${set.letters} (${setType === 'WORD_SET_5' ? '5-letter' : '6-letter'} set)
+      editorTitle.innerHTML = `${set.letters} (${setType === 'WORD_SET_5' ? '5-letter' : setType === 'WORD_SET_7' ? '7-letter' : '6-letter'} set)
         <button id="gen-anagrams-btn" style="
           margin-left: 12px;
           padding: 6px 12px;
@@ -1403,7 +1403,7 @@
           showAnagramModal(set.letters, set.letters);
         });
         document.getElementById('random-words-btn').addEventListener('click', () => {
-          const desiredLength = setType === 'WORD_SET_5' ? 5 : 6;
+          const desiredLength = setType === 'WORD_SET_5' ? 5 : setType === 'WORD_SET_7' ? 7 : 6;
           showRandomWordsModal(desiredLength);
         });
       }
@@ -1574,6 +1574,9 @@
         // Add to appropriate word set
         if (length === 5) {
           wordsets.WORD_SET_5.push(finalSet);
+        } else if (length === 7) {
+          wordsets.WORD_SET_7 = wordsets.WORD_SET_7 || [];
+          wordsets.WORD_SET_7.push(finalSet);
         } else {
           wordsets.WORD_SET_6.push(finalSet);
         }
@@ -1653,6 +1656,12 @@
           )).sort(),
         })),
         WORD_SET_6: (wordsets.WORD_SET_6 || []).map((set) => ({
+          letters: set.letters,
+          words: Array.from(new Set(
+            Array.isArray(set.words) ? set.words : Array.from(set.words)
+          )).sort(),
+        })),
+        WORD_SET_7: (wordsets.WORD_SET_7 || []).map((set) => ({
           letters: set.letters,
           words: Array.from(new Set(
             Array.isArray(set.words) ? set.words : Array.from(set.words)

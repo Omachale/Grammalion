@@ -9,7 +9,8 @@ const cors      = require('cors');
 const db        = require('./db');
 const {
   createRoom, joinRoom, removePlayer,
-  startGame, submitWord, endGame, resetRoom,
+  startGame, submitWord, submitAnswer, allPlayersFinished,
+  endGame, resetRoom,
   getRoom, getRoomIdForSocket,
 } = require('./rooms');
 
@@ -52,17 +53,18 @@ io.on('connection', (socket) => {
   console.log(`[+] ${socket.id} connected`);
 
   // ── createRoom ──────────────────────────────────────────────────────────────
-  socket.on('createRoom', ({ playerName, uuid, letterCount = 6 }) => {
+  socket.on('createRoom', ({
+    playerName, uuid,
+    letterCount = 6, gameMode = 'juggle',
+    grammar = null, task = null, questionCount = 5, timerOn = false,
+  }) => {
     try {
       validateName(playerName);
-      const room = createRoom(socket.id, playerName, uuid, letterCount);
+      const room = createRoom(socket.id, playerName, uuid, letterCount, gameMode,
+        { grammar, task, questionCount, timerOn });
       socket.join(room.roomId);
-      socket.emit('roomCreated', {
-        roomId:      room.roomId,
-        letterCount: room.letterCount,
-        players:     serializePlayers(room),
-      });
-      console.log(`[room] ${playerName} created ${room.roomId} (${room.letterCount} letters)`);
+      socket.emit('roomCreated', serializeRoom(room));
+      console.log(`[room] ${playerName} created ${room.roomId} (${room.gameMode})`);
     } catch (err) {
       socket.emit('error', { message: err.message });
     }
@@ -74,11 +76,7 @@ io.on('connection', (socket) => {
       validateName(playerName);
       const room = joinRoom(roomId.toUpperCase().trim(), socket.id, playerName, uuid);
       socket.join(room.roomId);
-      socket.emit('roomJoined', {
-        roomId:      room.roomId,
-        letterCount: room.letterCount,
-        players:     serializePlayers(room),
-      });
+      socket.emit('roomJoined', serializeRoom(room));
       // Notify others in the room
       socket.to(room.roomId).emit('playerJoined', {
         playerName,
@@ -98,13 +96,46 @@ io.on('connection', (socket) => {
       if (room.hostId !== socket.id)  throw new Error('Only the host can start the game.');
       if (room.players.length < 2)    throw new Error('Need at least 2 players to start.');
 
-      const { letters, duration, startTime } = startGame(roomId);
+      const result = startGame(roomId);
 
-      io.to(roomId).emit('roundStart', { letters, duration, startTime });
-      console.log(`[game] Room ${roomId} started — "${letters}"`);
+      if (room.gameMode === 'multichoice') {
+        const { questions, duration, startTime } = result;
+        io.to(roomId).emit('roundStart', { questions, duration, startTime, gameMode: room.gameMode });
+        console.log(`[game] Room ${roomId} started — multichoice (${room.questionCount}q, timerOn=${room.timerOn})`);
+        // Only set timer if it's a timed round
+        if (duration) setTimeout(() => endRound(roomId), duration);
+      } else {
+        const { letters, duration, startTime } = result;
+        io.to(roomId).emit('roundStart', { letters, duration, startTime, gameMode: room.gameMode });
+        console.log(`[game] Room ${roomId} started — "${letters}"`);
+        setTimeout(() => endRound(roomId), duration);
+      }
+    } catch (err) {
+      socket.emit('error', { message: err.message });
+    }
+  });
 
-      // Authoritative server-side timer
-      setTimeout(() => endRound(roomId), duration);
+  // ── submitAnswer (Multichoice multiplayer) ──────────────────────────────────
+  socket.on('submitAnswer', ({ roomId, questionIndex, answer }) => {
+    try {
+      if (typeof questionIndex !== 'number') throw new Error('Invalid question index.');
+      if (!answer || typeof answer !== 'string') throw new Error('Invalid answer.');
+
+      const result = submitAnswer(roomId, socket.id, questionIndex, answer);
+      socket.emit('answerResult', result);
+
+      // Broadcast updated score to everyone in the room
+      const room   = getRoom(roomId);
+      const player = room.players.find(p => p.socketId === socket.id);
+      io.to(roomId).emit('scoreUpdate', {
+        playerName: player.playerName,
+        score:      player.score,
+      });
+
+      // End round immediately if all players have finished
+      if (allPlayersFinished(roomId)) {
+        endRound(roomId);
+      }
     } catch (err) {
       socket.emit('error', { message: err.message });
     }
@@ -144,10 +175,7 @@ io.on('connection', (socket) => {
       if (room.status !== 'ended')   throw new Error('Game has not ended yet.');
 
       resetRoom(roomId);
-      io.to(roomId).emit('roomReset', {
-        players:     serializePlayers(room),
-        letterCount: room.letterCount,
-      });
+      io.to(roomId).emit('roomReset', serializeRoom(room));
       console.log(`[game] Room ${roomId} reset for play-again`);
     } catch (err) {
       socket.emit('error', { message: err.message });
@@ -171,7 +199,11 @@ io.on('connection', (socket) => {
 
 /** End a round: broadcast final scores, persist to DB. */
 async function endRound(roomId) {
-  const room = endGame(roomId);  // marks status = 'ended'
+  // Guard against double-fire (allPlayersFinished + setTimeout both calling this)
+  const existing = getRoom(roomId);
+  if (!existing || existing.status === 'ended') return;
+
+  const room = endGame(roomId);  // marks status = 'ended', applies time bonuses
   if (!room) return;
 
   const scores = room.players
@@ -179,7 +211,7 @@ async function endRound(roomId) {
       playerName: p.playerName,
       uuid:       p.uuid,
       score:      p.score,
-      wordsFound: p.wordsFound,
+      wordsFound: p.wordsFound || [],  // empty for Multichoice
     }))
     .sort((a, b) => b.score - a.score);
 
@@ -231,8 +263,22 @@ function serializePlayers(room) {
     playerName: p.playerName,
     isHost:     p.socketId === room.hostId,
     score:      p.score,
-    wordCount:  p.wordsFound.length,
+    wordCount:  p.wordsFound ? p.wordsFound.length : (p.answeredCount || 0),
   }));
+}
+
+/** Serialize room metadata (sent on roomCreated / roomJoined). */
+function serializeRoom(room) {
+  return {
+    roomId:        room.roomId,
+    letterCount:   room.letterCount,
+    gameMode:      room.gameMode,
+    grammar:       room.grammar,
+    task:          room.task,
+    questionCount: room.questionCount,
+    timerOn:       room.timerOn,
+    players:       serializePlayers(room),
+  };
 }
 
 // ─── Start ────────────────────────────────────────────────────────────────────

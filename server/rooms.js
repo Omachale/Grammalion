@@ -3,6 +3,9 @@
 // ─── Word sets (single source of truth: shared with client) ──────────────────
 const wordsetData = require('../src/assets/wordsets.json');
 
+// ─── Multichoice question pools ───────────────────────────────────────────────
+const { QUESTION_POOLS } = require('./questions');
+
 // Pre-build Sets for O(1) lookup
 const WORD_SET_5 = wordsetData.WORD_SET_5.map(s => ({
   letters: s.letters,
@@ -46,6 +49,15 @@ function shuffleString(str) {
   return arr.join('');
 }
 
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function makePlayer(socketId, playerName, uuid) {
   return {
     socketId,
@@ -61,20 +73,26 @@ function makePlayer(socketId, playerName, uuid) {
 /**
  * Create a new room. Returns the room object.
  */
-function createRoom(socketId, playerName, uuid, letterCount = 6) {
+function createRoom(socketId, playerName, uuid, letterCount = 6, gameMode = 'juggle', options = {}) {
   const roomId = generateRoomId();
   const player = makePlayer(socketId, playerName, uuid);
 
   const room = {
     roomId,
-    hostId:      socketId,
-    status:      'waiting',       // 'waiting' | 'playing' | 'ended'
-    letterCount: letterCount === 5 ? 5 : letterCount === 7 ? 7 : 6,
-    wordSet:     null,            // populated on startGame
-    letters:     null,            // shuffled letters string, populated on startGame
-    startTime:   null,
-    duration:    ROUND_DURATION_MS,
-    players:     [player],
+    hostId:        socketId,
+    status:        'waiting',       // 'waiting' | 'playing' | 'ended'
+    gameMode:      gameMode,        // 'juggle' | 'multichoice' | future modes
+    letterCount:   letterCount === 5 ? 5 : letterCount === 7 ? 7 : 6,
+    wordSet:       null,            // populated on startGame (juggle)
+    letters:       null,            // shuffled letters string (juggle)
+    questions:     null,            // populated on startGame (multichoice)
+    grammar:       options.grammar       || null,
+    task:          options.task          || null,
+    questionCount: options.questionCount || 5,
+    timerOn:       options.timerOn       || false,
+    startTime:     null,
+    duration:      ROUND_DURATION_MS,
+    players:       [player],
   };
 
   rooms.set(roomId, room);
@@ -142,6 +160,31 @@ function startGame(roomId) {
   if (!room)                     throw new Error('Room not found.');
   if (room.status !== 'waiting') throw new Error('Game already started.');
 
+  room.startTime = Date.now();
+  room.status    = 'playing';
+
+  if (room.gameMode === 'multichoice') {
+    // ── Multichoice: select questions, set round-level timer ────────────────
+    const pool = QUESTION_POOLS[room.grammar] || [];
+    if (pool.length === 0) throw new Error(`No questions available for grammar: ${room.grammar}`);
+    room.questions = shuffleArray(pool).slice(0, room.questionCount);
+    room.duration  = room.timerOn ? room.questionCount * 6000 : null;
+
+    // Reset all player state
+    for (const p of room.players) {
+      p.score         = 0;
+      p.answeredCount = 0;
+      p.finishTime    = null;
+    }
+
+    return {
+      questions:  room.questions,
+      duration:   room.duration,
+      startTime:  room.startTime,
+    };
+  }
+
+  // ── Juggle: pick a word set, shuffle letters ─────────────────────────────
   const pool = room.letterCount === 5 ? WORD_SET_5
              : room.letterCount === 7 ? WORD_SET_7
              : WORD_SET_6;
@@ -149,8 +192,7 @@ function startGame(roomId) {
 
   room.wordSet   = selected;
   room.letters   = shuffleString(selected.letters);
-  room.startTime = Date.now();
-  room.status    = 'playing';
+  room.duration  = ROUND_DURATION_MS;
 
   // Reset all player scores (in case of play-again)
   for (const p of room.players) {
@@ -194,11 +236,67 @@ function submitWord(roomId, socketId, word) {
 }
 
 /**
- * Mark room as ended. Returns the room (for score extraction).
+ * Validate and record a Multichoice answer.
+ * Returns { correct, correctAnswers, finished }.
+ * Throws if room not found, not playing, or wrong gameMode.
+ */
+function submitAnswer(roomId, socketId, questionIndex, answer) {
+  const room = rooms.get(roomId);
+  if (!room)                      throw new Error('Room not found.');
+  if (room.status !== 'playing')  throw new Error('No game in progress.');
+  if (room.gameMode !== 'multichoice') throw new Error('Not a Multichoice room.');
+
+  const player = room.players.find(p => p.socketId === socketId);
+  if (!player) throw new Error('Player not in room.');
+
+  const q = room.questions[questionIndex];
+  if (!q)  throw new Error('Invalid question index.');
+
+  const correctAnswers = q.answer.split('/').map(s => s.trim());
+  const correct        = correctAnswers.includes((answer || '').trim());
+
+  if (correct) player.score += 1;
+  player.answeredCount = (player.answeredCount || 0) + 1;
+
+  const finished = player.answeredCount >= room.questionCount;
+  if (finished && !player.finishTime) {
+    player.finishTime = Date.now();  // used for time-bonus calculation at round end
+  }
+
+  return { correct, correctAnswers, finished, score: player.score };
+}
+
+/**
+ * Check whether all players in a Multichoice room have finished.
+ */
+function allPlayersFinished(roomId) {
+  const room = rooms.get(roomId);
+  if (!room) return false;
+  return room.players.every(p => (p.answeredCount || 0) >= room.questionCount);
+}
+
+/**
+ * Mark room as ended. For Multichoice, applies time bonuses before returning.
+ * Returns the room (for score extraction).
  */
 function endGame(roomId) {
   const room = rooms.get(roomId);
-  if (room) room.status = 'ended';
+  if (!room) return null;
+  room.status = 'ended';
+
+  // Apply time bonuses for Multichoice timed rounds
+  if (room.gameMode === 'multichoice' && room.timerOn && room.startTime && room.duration) {
+    const roundEnd = room.startTime + room.duration;
+    for (const p of room.players) {
+      if (p.finishTime && p.finishTime < roundEnd) {
+        const remainingMs = roundEnd - p.finishTime;
+        const bonus       = Math.floor(remainingMs / 10000);
+        p.score          += Math.max(0, bonus);
+      }
+      // Players who didn't finish get no time bonus (score stays as-is)
+    }
+  }
+
   return room;
 }
 
@@ -232,6 +330,8 @@ module.exports = {
   removePlayer,
   startGame,
   submitWord,
+  submitAnswer,
+  allPlayersFinished,
   endGame,
   resetRoom,
   getRoom,

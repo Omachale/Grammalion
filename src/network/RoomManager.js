@@ -23,12 +23,17 @@ class RoomManager {
   // ── State ───────────────────────────────────────────────────────────────────
 
   reset() {
-    this.roomId      = null;
-    this.players     = [];     // [{ playerName, isHost, score, wordCount }]
-    this.isHost      = false;
-    this.letterCount = 6;
-    this.playerName  = null;
-    this.uuid        = null;
+    this.roomId        = null;
+    this.players       = [];     // [{ playerName, isHost, score, wordCount }]
+    this.isHost        = false;
+    this.letterCount   = 6;
+    this.gameMode      = 'juggle';
+    this.playerName    = null;
+    this.uuid          = null;
+    this.grammar       = null;
+    this.task          = null;
+    this.questionCount = 5;
+    this.timerOn       = false;
   }
 
   // ── Setup ───────────────────────────────────────────────────────────────────
@@ -41,12 +46,22 @@ class RoomManager {
 
   // ── Actions (emit to server) ────────────────────────────────────────────────
 
-  create(letterCount = 6) {
-    this.letterCount = letterCount;
+  create(letterCount = 6, gameMode = 'juggle', options = {}) {
+    this.letterCount   = letterCount;
+    this.gameMode      = gameMode;
+    this.grammar       = options.grammar       || null;
+    this.task          = options.task          || null;
+    this.questionCount = options.questionCount || 5;
+    this.timerOn       = options.timerOn       || false;
     socketClient.emit('createRoom', {
-      playerName:  this.playerName,
-      uuid:        this.uuid,
-      letterCount: this.letterCount,
+      playerName:    this.playerName,
+      uuid:          this.uuid,
+      letterCount:   this.letterCount,
+      gameMode:      this.gameMode,
+      grammar:       this.grammar,
+      task:          this.task,
+      questionCount: this.questionCount,
+      timerOn:       this.timerOn,
     });
   }
 
@@ -76,17 +91,27 @@ class RoomManager {
   // ── State updaters (called by LobbyScene when socket events arrive) ─────────
 
   onRoomCreated(data) {
-    this.roomId      = data.roomId;
-    this.players     = data.players;
-    this.letterCount = data.letterCount;
-    this.isHost      = true;
+    this.roomId        = data.roomId;
+    this.players       = data.players;
+    this.letterCount   = data.letterCount;
+    this.gameMode      = data.gameMode      || 'juggle';
+    this.grammar       = data.grammar       || null;
+    this.task          = data.task          || null;
+    this.questionCount = data.questionCount || 5;
+    this.timerOn       = data.timerOn       || false;
+    this.isHost        = true;
   }
 
   onRoomJoined(data) {
-    this.roomId      = data.roomId;
-    this.players     = data.players;
-    this.letterCount = data.letterCount;
-    this.isHost      = false;
+    this.roomId        = data.roomId;
+    this.players       = data.players;
+    this.letterCount   = data.letterCount;
+    this.gameMode      = data.gameMode      || 'juggle';
+    this.grammar       = data.grammar       || null;
+    this.task          = data.task          || null;
+    this.questionCount = data.questionCount || 5;
+    this.timerOn       = data.timerOn       || false;
+    this.isHost        = false;
   }
 
   onPlayerListUpdate(players) {
@@ -96,6 +121,7 @@ class RoomManager {
   onRoomReset(data) {
     this.players     = data.players;
     this.letterCount = data.letterCount;
+    this.gameMode    = data.gameMode || this.gameMode;
   }
 }
 
