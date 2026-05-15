@@ -15,6 +15,7 @@ import * as Phaser from 'phaser';
 import socketClient      from '../network/SocketClient';
 import roomManager       from '../network/RoomManager';
 import GameSelector, { COMPATIBLE } from '../ui/GameSelector';
+import NeonFrame from '../ui/NeonFrame';
 
 // ── Lobby form HTML ───────────────────────────────────────────────────────────
 
@@ -173,8 +174,9 @@ const LOBBY_HTML = `
 export default class LobbyScene extends Phaser.Scene {
   constructor() {
     super({ key: 'LobbyScene' });
-    this._overlay = null;
-    this._el      = {};
+    this._overlay   = null;
+    this._el        = {};
+    this._neonFrame = null;
   }
 
   // ── Preload ────────────────────────────────────────────────────────────────
@@ -213,15 +215,7 @@ export default class LobbyScene extends Phaser.Scene {
       slGfx.destroy();
     }
 
-    // ── Title (above background) ───────────────────────────────────────────────
-    this.add.text(cw / 2, 54, 'MULTIPLAYER', {
-      fontFamily:      "'Syncopate', monospace",
-      fontSize:        '26px',
-      fontStyle:       'bold',
-      color:           '#48C1C0',
-      stroke:          '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5, 0.5);
+    // ── Title is now rendered by NeonFrame SVG animation (3-layer neon "MULTIPLAYER" text) ──
 
     // ── Single Player button (bottom-right; mirrors "Play Online" in MainScene) ──
     const backBtn = this.add.text(cw - 20, ch - 20, '◀  SINGLE PLAYER', {
@@ -251,6 +245,11 @@ export default class LobbyScene extends Phaser.Scene {
     this._roomsBtn.on('pointerover',  () => this._roomsBtn.setAlpha(0.8));
     this._roomsBtn.on('pointerout',   () => this._roomsBtn.setAlpha(1.0));
     this._roomsBtn.on('pointerdown',  () => this._showRoomsOverlay());
+
+    // ── Neon frame — trace in, then freeze as a permanent blue border ─────────
+    this._neonFrame = new NeonFrame();
+    this._neonFrame.mount();
+    this._neonFrame.playOnce();
 
     // ── Connect to server ─────────────────────────────────────────────────────
     socketClient.connect();
@@ -291,9 +290,10 @@ export default class LobbyScene extends Phaser.Scene {
     const form = this._overlay.querySelector('#gl-lobby');
     form.style.pointerEvents = 'auto';
 
-    // Stop keyboard events from reaching Phaser while typing
+    // Stop keyboard and pointer events from reaching Phaser while typing / interacting
     this._overlay.addEventListener('keydown', e => e.stopPropagation(), true);
     this._overlay.addEventListener('keyup',   e => e.stopPropagation(), true);
+    this._overlay.addEventListener('wheel',   e => e.stopPropagation(), { capture: true, passive: true });
 
     // Cache references to all interactive elements
     const q = id => this._overlay.querySelector(`#${id}`);
@@ -339,12 +339,18 @@ export default class LobbyScene extends Phaser.Scene {
   _showRoomsOverlay() {
     if (!this._overlay) this._mountOverlay();
     this._overlay.style.display = 'flex';
+    // Block ALL pointer events (click, drag, scroll) from reaching the Phaser
+    // canvas while the overlay is open — otherwise they hit the dials underneath.
+    this._overlay.style.pointerEvents = 'auto';
     if (this._roomsBtn) this._roomsBtn.setVisible(false);
   }
 
   /** Close the overlay and return to the dials view. */
   _hideRoomsOverlay() {
-    if (this._overlay) this._overlay.style.display = 'none';
+    if (this._overlay) {
+      this._overlay.style.display      = 'none';
+      this._overlay.style.pointerEvents = 'none';   // restore pass-through for Phaser
+    }
     if (this._bgImage)  this._bgImage.setVisible(true);
     if (this._selector) this._selector.setVisible(true);
     if (this._roomsBtn) this._roomsBtn.setVisible(true);
@@ -376,8 +382,10 @@ export default class LobbyScene extends Phaser.Scene {
     const isJuggle      = grammar === 'Juggle';
     const isMultichoice = task === 'Multichoice' &&
                           (COMPATIBLE[grammar] || new Set()).has('Multichoice');
+    const isGapFill     = task === 'Gap Fill' &&
+                          (COMPATIBLE[grammar] || new Set()).has('Gap Fill');
 
-    if (!isJuggle && !isMultichoice) {
+    if (!isJuggle && !isMultichoice && !isGapFill) {
       this._showError('Not available online yet.');
       return;
     }
@@ -391,9 +399,11 @@ export default class LobbyScene extends Phaser.Scene {
       const letterCount = parseInt(rounds, 10);  // '5 Letters' → 5
       roomManager.create(letterCount, 'juggle');
     } else {
+      // Multichoice and Gap Fill share the same room-creation signature.
+      const mode          = isGapFill ? 'gapfill' : 'multichoice';
       const questionCount = parseInt(rounds, 10);  // 5, 10, or 15
       const timerOn       = timer !== 'Off';        // 'On' → timed round; 'Off' → finish-to-end
-      roomManager.create(0, 'multichoice', { grammar, task, questionCount, timerOn });
+      roomManager.create(0, mode, { grammar, task, questionCount, timerOn });
     }
 
     this._setBusy(true);
@@ -490,6 +500,7 @@ export default class LobbyScene extends Phaser.Scene {
     });
 
     socketClient.on('error', (data) => {
+      console.error('[LobbyScene] server error:', data.message);
       this._setBusy(false);
       this._showError(data.message || 'Something went wrong.');
     });
@@ -545,9 +556,13 @@ export default class LobbyScene extends Phaser.Scene {
   // ── Round start → launch game ──────────────────────────────────────────────
 
   _onRoundStart(data) {
-    this._el.startingMsg.style.display   = 'block';
-    this._el.hostControls.style.display  = 'none';
-    this._el.guestControls.style.display = 'none';
+    console.log('[LobbyScene] roundStart received — data.gameMode:', data.gameMode,
+      '| roomManager.gameMode:', roomManager.gameMode,
+      '| roomManager.task:', roomManager.task);
+
+    if (this._el.startingMsg)   this._el.startingMsg.style.display   = 'block';
+    if (this._el.hostControls)  this._el.hostControls.style.display  = 'none';
+    if (this._el.guestControls) this._el.guestControls.style.display = 'none';
 
     this.time.delayedCall(800, () => {
       this._cleanup();
@@ -555,11 +570,15 @@ export default class LobbyScene extends Phaser.Scene {
       const { letterCount, roomId, playerName, players } = roomManager;
       const gameMode  = data.gameMode || roomManager.gameMode;  // server-authoritative; roomManager as fallback
       const roundsStr = `${letterCount} Letters`;
+      console.log('[LobbyScene] launching scene for gameMode:', gameMode);
 
+      // Route all game modes through GameBeamScene so the beam animation
+      // plays for every player when the host starts the game, exactly like
+      // the single-player path. GameBeamScene forwards the full payload to
+      // the target scene via its _startDisplaySequence() spread.
       if (gameMode === 'juggle') {
-        // Run JuggleScene alongside GameBeamScene (which keeps providing the
-        // Display4 background), exactly like the single-player path does.
-        this.scene.run('JuggleScene', {
+        this.scene.run('GameBeamScene', {
+          targetScene:   'JuggleScene',
           letters:       data.letters,
           rounds:        roundsStr,
           duration:      data.duration,
@@ -570,9 +589,25 @@ export default class LobbyScene extends Phaser.Scene {
           players,
         });
       } else if (gameMode === 'multichoice') {
-        this.scene.run('MultiChoiceScene', {
+        this.scene.run('GameBeamScene', {
+          targetScene:   'MultiChoiceScene',
           questions:     data.questions,
           grammar:       roomManager.grammar,
+          rounds:        roomManager.questionCount,
+          timer:         roomManager.timerOn ? 'On' : 'Off',
+          duration:      data.duration,
+          startTime:     data.startTime,
+          isMultiplayer: true,
+          roomId,
+          playerName,
+          players,
+        });
+      } else if (gameMode === 'gapfill') {
+        this.scene.run('GameBeamScene', {
+          targetScene:   'GameScene',
+          questions:     data.questions,
+          grammar:       roomManager.grammar,
+          task:          roomManager.task,
           rounds:        roomManager.questionCount,
           timer:         roomManager.timerOn ? 'On' : 'Off',
           duration:      data.duration,
@@ -607,6 +642,12 @@ export default class LobbyScene extends Phaser.Scene {
   // ── Cleanup ────────────────────────────────────────────────────────────────
 
   _cleanup() {
+    // Tear down neon frame SVG overlay
+    if (this._neonFrame) {
+      this._neonFrame.destroy();
+      this._neonFrame = null;
+    }
+
     // Tear down game-selector Phaser objects
     if (this._selector) {
       this._selector.destroy();

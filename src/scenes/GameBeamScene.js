@@ -24,13 +24,22 @@ export default class GameBeamScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('bg',      'assets/images/game/Background UI.png');
+    this.load.image('bg',      'assets/images/game/Background UI.webp');
     this.load.image('dial',    'assets/images/game/cropped_circle_image.png');
     this.load.image('display', 'assets/images/game/Display.png');
     this.load.image('display4', 'assets/images/game/Display4.png');
   }
 
   create() {
+    // Skip beam animation when going to the multiplayer lobby — LobbyScene's
+    // NeonFrame handles its own visual entrance. No visuals are created here
+    // so there is no flash before LobbyScene appears.
+    if (this._sceneData?.targetScene === 'LobbyScene') {
+      this.scene.run('LobbyScene');
+      this.scene.stop('GameBeamScene');
+      return;
+    }
+
     const cw = this.cameras.main.width;
     const ch = this.cameras.main.height;
 
@@ -162,9 +171,13 @@ export default class GameBeamScene extends Phaser.Scene {
 
         // ── Launch game scene after 0.2s delay ────────────────────────────
         this.time.delayedCall(200, () => {
-          const { targetScene, grammar, task, cefr, rounds, timer } = this._sceneData;
+          // Spread all sceneData to the target scene so both single-player fields
+          // (grammar, task, cefr, rounds, timer) AND multiplayer fields
+          // (isMultiplayer, roomId, playerName, players, questions, duration,
+          //  startTime, letters) are forwarded without being enumerated here.
+          const { targetScene, ...rest } = this._sceneData;
           if (targetScene) {
-            this.scene.run(targetScene, { grammar, task, cefr, rounds, timer });
+            this.scene.run(targetScene, rest);
           }
         });
       },

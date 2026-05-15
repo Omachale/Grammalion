@@ -23,7 +23,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('bg',        'assets/images/game/Background UI.png');
+    this.load.image('bg',        'assets/images/game/Background UI.webp');
     this.load.image('dial',      'assets/images/game/cropped_circle_image.png');
     this.load.image('start-img', 'assets/images/game/Start.png');
   }

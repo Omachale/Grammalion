@@ -1,10 +1,19 @@
 import * as Phaser from 'phaser';
 import { gapFill, gapFillContinuous, gapFillPast, gapFillVerbPatterns } from '../data/sentences';
 import PowerBar from '../ui/PowerBar';
+import MultiplayerHUD from '../ui/MultiplayerHUD';
+import socketClient from '../network/SocketClient';
+import roomManager  from '../network/RoomManager';
 import { startCountdown } from '../ui/countdown';
 import { POWER_BAR_X, POWER_BAR_Y, POWER_BAR_SCALE, MENU_BTN_X, MENU_BTN_Y, MENU_BTN_SCALE } from '../ui/gameScreenLayout';
 
 const TIMER_LIMITS = { Off: null, Slow: 12000, Medium: 7500, Fast: 4500 };
+
+// ── Multiplayer layout (mirrors MultiChoiceScene for consistency) ────────────
+const GAME_CENTER_X = 687;   // centre of the sentence panel (312 + 750/2)
+const SCORE_CX      = 130;
+const SCORE_Y0      = 160;
+const SCORE_ROW     = 36;
 
 // ─── Fisher-Yates shuffle (pure function, no side effects on original) ────────
 function shuffle(arr) {
@@ -23,6 +32,7 @@ export default class GameScene extends Phaser.Scene {
 
   preload() {
     this.load.image('menu-btn', 'assets/images/game/Menu.png');
+    this.load.image('display4', 'assets/images/game/Display4.png');
     PowerBar.preload(this);
   }
 
@@ -33,9 +43,29 @@ export default class GameScene extends Phaser.Scene {
     this._cefr    = data.cefr   || 'A2';
     this._rounds  = data.rounds  || 10;
     this._timer   = data.timer   || 'Off';
+
+    // ── Multiplayer context ────────────────────────────────────────────────────
+    this._isMultiplayer = !!data.isMultiplayer;
+    this._roomId        = data.roomId     || null;
+    this._playerName    = data.playerName || null;
+    this._duration      = data.duration   || null;   // null = no round timer
+    this._startTime     = data.startTime  || null;
+    this._players       = (data.players   || []).map(p => ({ playerName: p.playerName, score: 0 }));
+    this._roundEnded    = false;
+    this._interimPanel  = null;
+    this._mpQuestions   = this._isMultiplayer ? (data.questions || []) : null;
+    this._lastAnswer    = '';
   }
 
   create() {
+    const cw = this.cameras.main.width;
+    const ch = this.cameras.main.height;
+
+    // ── Background: Display4 (self-contained so this scene works with or without GameBeamScene) ──
+    const displayFrame = this.textures.getFrame('display4');
+    const displayScale = Math.min(cw / displayFrame.realWidth, ch / displayFrame.realHeight);
+    this.add.image(cw / 2, ch / 2, 'display4').setScale(displayScale);
+
     // ── Game state ──────────────────────────────────────────────────────────
     this._correct       = 0;
     this._wrong         = 0;
@@ -44,15 +74,16 @@ export default class GameScene extends Phaser.Scene {
     this._cursorVisible = true;
     this._inputLocked   = true;   // locked until countdown finishes
 
-    // ── Question pool: choose bank by grammar point, shuffle, slice ─────────
+    // ── Question pool: server-provided in multiplayer; locally shuffled otherwise
     const POOLS = {
       'Present Simple':     gapFill,
       'Present Continuous': gapFillContinuous,
       'Past Simple':        gapFillPast,
       'Verb Patterns':      gapFillVerbPatterns,
     };
-    const pool = POOLS[this._grammar] || gapFill;
-    this._questions = shuffle(pool).slice(0, this._rounds);
+    this._questions = this._isMultiplayer
+      ? this._mpQuestions
+      : shuffle(POOLS[this._grammar] || gapFill).slice(0, this._rounds);
 
     // ── Question counter ────────────────────────────────────────────────────
     // (Removed for now)
@@ -163,17 +194,211 @@ export default class GameScene extends Phaser.Scene {
       this._cursorTimer.remove(false);
       this._powerBar.destroy();
       this.scene.stop('ScanLineScene');
+      if (this._isMultiplayer) {
+        this._hud?.destroy();
+        ['answerResult', 'scoreUpdate', 'roundEnd'].forEach(e => socketClient.offAll(e));
+      }
     });
 
     // ── Scan line overlay ─────────────────────────────────────────────────────
     this.scene.run('ScanLineScene');
 
-    // ── Countdown then start (only when timer is active) ─────────────────────
+    // ── Multiplayer: HUD + socket handlers, then start immediately ────────────
+    if (this._isMultiplayer) {
+      this._createMultiplayerUI();
+      this._registerSocketHandlers();
+      this._inputLocked = false;
+      this._showQuestion();
+      return;
+    }
+
+    // ── Single-player: countdown then start (only when timer is active) ──────
     if (this._timerLimit) {
       startCountdown(this, () => this._showQuestion());
     } else {
       this._showQuestion();
     }
+  }
+
+  // ─── Multiplayer UI ───────────────────────────────────────────────────────
+
+  _createMultiplayerUI() {
+    this._hud = new MultiplayerHUD(this, {
+      players:    this._players,
+      playerName: this._playerName,
+      duration:   this._duration,
+      startTime:  this._startTime,
+      timer:      { x: GAME_CENTER_X, y: 80 },
+      scoreboard: { cx: SCORE_CX, y0: SCORE_Y0, rowSpacing: SCORE_ROW, panelWidth: 220 },
+    });
+  }
+
+  // ─── Multiplayer socket handlers ──────────────────────────────────────────
+
+  _registerSocketHandlers() {
+    // Server validated our answer
+    socketClient.on('answerResult', (data) => {
+      if (this._roundEnded) return;
+
+      if (data.correct) {
+        this._correct++;
+        this._powerBar.addCorrect();
+        this._showFeedback('✓ CORRECT', '#22BB44');
+      } else {
+        this._wrong++;
+        this._powerBar.addIncorrect();
+        const shown = (data.correctAnswers || []).join(' / ');
+        this._showFeedback('✗ ' + (shown || 'WRONG'), '#CC3344');
+        this.cameras.main.shake(200, 0.008);
+      }
+
+      this.time.delayedCall(1200, () => {
+        this._questionIndex++;
+        if (this._questionIndex >= this._rounds) {
+          // Guard: if roundEnd arrived during the 1200ms feedback delay,
+          // the victory screen is already showing — don't draw interim on top.
+          if (!this._roundEnded) this._showInterimScreen();
+        } else {
+          this._showQuestion();
+        }
+      });
+    });
+
+    // Another player's score changed
+    socketClient.on('scoreUpdate', (data) => {
+      this._hud?.setScore(data.playerName, data.score);
+    });
+
+    // Round over — server has applied time bonuses and sent final scores
+    socketClient.on('roundEnd', (data) => {
+      this._roundEnded = true;
+      this._hud?.setRoundEnded();
+      this._showVictoryScreen(data.scores);
+    });
+  }
+
+  // ─── Interim screen (player finished early, waiting for others) ───────────
+
+  _showInterimScreen() {
+    this._inputLocked = true;
+    const n    = Math.min(this._players.length, 4);
+    const panH = 60 + n * 40 + 20;
+    const panY = 300;
+
+    const panel = this.add.rectangle(GAME_CENTER_X, panY, 500, panH, 0x060c14, 0.97)
+      .setStrokeStyle(2, 0x48C1C0, 1)
+      .setDepth(20);
+
+    const header = this.add.text(GAME_CENTER_X, panY - panH / 2 + 28, 'WAITING FOR OTHER PLAYERS...', {
+      fontFamily:      "'Syncopate', monospace",
+      fontSize:        '13px',
+      fontStyle:       'bold',
+      color:           '#2a6a6a',
+      stroke:          '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5, 0.5).setDepth(21);
+
+    const rowY0  = panY - panH / 2 + 58;
+    const rows   = [];
+    const sorted = [...this._players].sort((a, b) => b.score - a.score);
+
+    sorted.slice(0, 4).forEach((p, i) => {
+      const isMe = p.playerName === this._playerName;
+      const y    = rowY0 + i * 40;
+      rows.push(
+        this.add.text(GAME_CENTER_X, y,
+          (isMe ? '▶ ' : '  ') + p.playerName + '  —  PLAYING', {
+          fontFamily: "'Syncopate', monospace",
+          fontSize:   '13px',
+          fontStyle:  'bold',
+          color:      isMe ? '#88ffff' : '#48C1C0',
+        }).setOrigin(0.5, 0.5).setDepth(21)
+      );
+    });
+
+    this._interimPanel = { panel, header, rows };
+  }
+
+  // ─── Victory screen (final scores with medals) ───────────────────────────
+
+  _showVictoryScreen(scores) {
+    // Remove the interim waiting screen if it was shown
+    if (this._interimPanel) {
+      const { panel, header, rows } = this._interimPanel;
+      panel.destroy();
+      header.destroy();
+      rows.forEach(r => r.destroy());
+      this._interimPanel = null;
+    }
+
+    this._inputLocked = true;
+
+    const n     = Math.min(scores.length, 4);
+    const panH  = 90 + n * 46 + 60;
+    const panCY = 300;
+
+    this.add.rectangle(GAME_CENTER_X, panCY, 580, panH, 0x060c14, 0.97)
+      .setStrokeStyle(2, 0x48C1C0, 1)
+      .setDepth(20);
+
+    this.add.text(GAME_CENTER_X, panCY - panH / 2 + 38, 'ROUND  OVER', {
+      fontFamily:      "'Syncopate', monospace",
+      fontSize:        '26px',
+      fontStyle:       'bold',
+      color:           '#48C1C0',
+      stroke:          '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5, 0.5).setDepth(21);
+
+    const medals = ['1ST', '2ND', '3RD', '4TH'];
+    const rowY0  = panCY - panH / 2 + 86;
+
+    scores.slice(0, 4).forEach((p, i) => {
+      const isMe = p.playerName === this._playerName;
+      const y    = rowY0 + i * 46;
+      const col  = i === 0 ? '#FFD700' : '#48C1C0';
+
+      this.add.text(GAME_CENTER_X - 240, y, medals[i], {
+        fontFamily: "'Syncopate', monospace",
+        fontSize:   '11px',
+        fontStyle:  'bold',
+        color:      col,
+      }).setOrigin(0, 0.5).setDepth(21);
+
+      this.add.text(GAME_CENTER_X - 185, y,
+        (isMe ? '▶ ' : '') + p.playerName, {
+        fontFamily: "'Syncopate', monospace",
+        fontSize:   '15px',
+        fontStyle:  'bold',
+        color:      isMe ? '#88ffff' : col,
+      }).setOrigin(0, 0.5).setDepth(21);
+
+      this.add.text(GAME_CENTER_X + 240, y, p.score + ' pts', {
+        fontFamily: "'Syncopate', monospace",
+        fontSize:   '14px',
+        fontStyle:  'bold',
+        color:      col,
+      }).setOrigin(1, 0.5).setDepth(21);
+    });
+
+    // Back to menu button
+    const btnY = rowY0 + n * 46 + 20;
+    const back = this.add.text(GAME_CENTER_X, btnY, '◀  BACK TO MENU', {
+      fontFamily:      "'Syncopate', monospace",
+      fontSize:        '13px',
+      fontStyle:       'bold',
+      color:           '#48C1C0',
+      stroke:          '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true }).setDepth(21);
+
+    back.on('pointerover', () => back.setColor('#88ffff'));
+    back.on('pointerout',  () => back.setColor('#48C1C0'));
+    back.on('pointerdown', () => {
+      roomManager.leave();
+      this.scene.stop('GameBeamScene');
+      this.scene.start('MainScene');
+    });
   }
 
   // ─── Return button ────────────────────────────────────────────────────────
@@ -184,7 +409,8 @@ export default class GameScene extends Phaser.Scene {
     menuBtn.setInteractive({ useHandCursor: true });
     menuBtn.setScale(MENU_BTN_SCALE);
     menuBtn.on('pointerdown', () => {
-      // Stop this game scene and any overlay scenes, returning to MainScene
+      // Multiplayer: leave the room cleanly before tearing down the scene
+      if (this._isMultiplayer) roomManager.leave();
       this.scene.stop('GameBeamScene');
       this.scene.stop();
     });
@@ -241,6 +467,20 @@ export default class GameScene extends Phaser.Scene {
   // ─── Answer evaluation ────────────────────────────────────────────────────
 
   _submitAnswer() {
+    // ── Multiplayer path: emit to server, wait for answerResult ──────────────
+    if (this._isMultiplayer) {
+      if (this._inputLocked || this._roundEnded) return;
+      this._inputLocked = true;
+      this._lastAnswer  = this._typedAnswer.trim();
+      socketClient.emit('submitAnswer', {
+        roomId:        this._roomId,
+        questionIndex: this._questionIndex,
+        answer:        this._lastAnswer,
+      });
+      return;
+    }
+
+    // ── Single-player path ────────────────────────────────────────────────────
     // Stop timer; capture elapsed only if the timer had actually started
     const timerWasActive  = this._timerActive;
     this._timerNeedsStart = false;
@@ -346,6 +586,13 @@ export default class GameScene extends Phaser.Scene {
   // ─── Frame loop ───────────────────────────────────────────────────────────
 
   update() {
+    // ── Multiplayer: drive round-level countdown timer via shared HUD ─────────
+    if (this._isMultiplayer) {
+      this._hud?.update();
+      return;
+    }
+
+    // ── Single-player per-question timer bar ─────────────────────────────────
     if (!this._timerLimit) return;
 
     if (this._timerNeedsStart) {

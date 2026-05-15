@@ -3,6 +3,7 @@ import { PANEL_CX, MENU_BTN_X, MENU_BTN_Y, MENU_BTN_SCALE } from '../ui/gameScre
 import wordsets from '../assets/wordsets.json';
 import socketClient from '../network/SocketClient';
 import roomManager  from '../network/RoomManager';
+import MultiplayerHUD from '../ui/MultiplayerHUD';
 
 // ─── Die grid constants ───────────────────────────────────────────────────────
 const DIE_SIZE = 120;    // rendered px (square)
@@ -233,6 +234,7 @@ export default class JuggleScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       this.input.keyboard.off('keydown', this._keyHandler);
       if (this._isMultiplayer) {
+        this._hud?.destroy();
         ['wordResult', 'scoreUpdate', 'roundEnd'].forEach(e => socketClient.offAll(e));
       }
     });
@@ -475,18 +477,8 @@ export default class JuggleScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
 
   update() {
-    if (!this._isMultiplayer || !this._startTime || !this._duration || this._roundEnded) return;
-
-    const remaining = Math.max(0, this._startTime + this._duration - Date.now());
-    const secs      = Math.ceil(remaining / 1000);
-
-    if (this._timerText) {
-      this._timerText.setText(String(secs));
-      const pct = remaining / this._duration;
-      if      (pct < 0.2) this._timerText.setColor('#CC3344');  // red  < 6 s
-      else if (pct < 0.5) this._timerText.setColor('#D4A017');  // amber < 15 s
-      else                this._timerText.setColor('#48C1C0');  // teal
-    }
+    if (!this._isMultiplayer || this._roundEnded) return;
+    this._hud?.update();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -494,54 +486,13 @@ export default class JuggleScene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
 
   _createMultiplayerUI() {
-    // ── Countdown timer (top-centre of content area) ─────────────────────────
-    this._timerText = this.add.text(PANEL_CX, 100, '30', {
-      fontFamily:      "'Syncopate', monospace",
-      fontSize:        '48px',
-      fontStyle:       'bold',
-      color:           '#48C1C0',
-      stroke:          '#000000',
-      strokeThickness: 5,
-    }).setOrigin(0.5, 0.5);
-
-    // ── Scoreboard panel (left column) ───────────────────────────────────────
-    const n    = Math.min(this._players.length, 4);
-    const panH = n * SCORE_ROW + 50;
-    const panY = SCORE_Y0 + (n - 1) * SCORE_ROW / 2;
-
-    this.add.rectangle(SCORE_CX, panY, 210, panH, 0x060c14)
-      .setStrokeStyle(1, 0x2a6a6a, 0.9);
-
-    this.add.text(SCORE_CX, SCORE_Y0 - 26, 'SCORES', {
-      fontFamily:    'monospace',
-      fontSize:      '10px',
-      color:         '#2a6a6a',
-      letterSpacing: 3,
-    }).setOrigin(0.5, 0.5);
-
-    this._scoreTexts = [];
-    for (let i = 0; i < n; i++) {
-      this._scoreTexts.push(
-        this.add.text(SCORE_CX, SCORE_Y0 + i * SCORE_ROW, '', {
-          fontFamily: "'Syncopate', monospace",
-          fontSize:   '13px',
-          fontStyle:  'bold',
-          color:      '#48C1C0',
-        }).setOrigin(0.5, 0.5)
-      );
-    }
-
-    this._updateScoreboard();
-  }
-
-  // ── Redraw scoreboard rows, sorted by score descending ──────────────────────
-  _updateScoreboard() {
-    if (!this._scoreTexts) return;
-    const sorted = [...this._players].sort((a, b) => b.score - a.score);
-    sorted.slice(0, 4).forEach((p, i) => {
-      const isMe  = p.playerName === this._playerName;
-      const label = (isMe ? '▶ ' : '  ') + p.playerName + ':  ' + p.score;
-      this._scoreTexts[i]?.setText(label).setColor(isMe ? '#88ffff' : '#48C1C0');
+    this._hud = new MultiplayerHUD(this, {
+      players:    this._players,
+      playerName: this._playerName,
+      duration:   this._duration,
+      startTime:  this._startTime,
+      timer:      { x: PANEL_CX, y: 100 },
+      scoreboard: { cx: SCORE_CX, y0: SCORE_Y0, rowSpacing: SCORE_ROW, panelWidth: 210 },
     });
   }
 
@@ -571,14 +522,13 @@ export default class JuggleScene extends Phaser.Scene {
 
   /** Server broadcasts a player's new score. */
   _handleScoreUpdate(data) {
-    const p = this._players.find(pl => pl.playerName === data.playerName);
-    if (p) p.score = data.score;
-    this._updateScoreboard();
+    this._hud?.setScore(data.playerName, data.score);
   }
 
   /** Server says time is up — lock the game and show results. */
   _handleRoundEnd(data) {
     this._roundEnded = true;
+    this._hud?.setRoundEnded();
     // Disable all dice so no further clicks register
     for (const die of this._dice) {
       die.image.disableInteractive();

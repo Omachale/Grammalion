@@ -21,7 +21,7 @@ export default class BeamScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('bg',      'assets/images/Background UI.png');
+    this.load.image('bg',      'assets/images/Background UI.webp');
     this.load.image('dial',    'assets/images/cropped_circle_image.png');
     this.load.image('display', 'assets/images/Display.png');
     this.load.image('display4', 'assets/images/Display4.png');

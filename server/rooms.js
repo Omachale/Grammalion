@@ -81,7 +81,7 @@ function createRoom(socketId, playerName, uuid, letterCount = 6, gameMode = 'jug
     roomId,
     hostId:        socketId,
     status:        'waiting',       // 'waiting' | 'playing' | 'ended'
-    gameMode:      gameMode,        // 'juggle' | 'multichoice' | future modes
+    gameMode:      gameMode,        // 'juggle' | 'multichoice' | 'gapfill' | future modes
     letterCount:   letterCount === 5 ? 5 : letterCount === 7 ? 7 : 6,
     wordSet:       null,            // populated on startGame (juggle)
     letters:       null,            // shuffled letters string (juggle)
@@ -163,10 +163,11 @@ function startGame(roomId) {
   room.startTime = Date.now();
   room.status    = 'playing';
 
-  if (room.gameMode === 'multichoice') {
-    // ── Multichoice: select questions, set round-level timer ────────────────
-    const pool = QUESTION_POOLS[room.grammar] || [];
-    if (pool.length === 0) throw new Error(`No questions available for grammar: ${room.grammar}`);
+  if (room.gameMode === 'multichoice' || room.gameMode === 'gapfill') {
+    // ── Multichoice / Gap Fill: select questions, set round-level timer ─────
+    const key  = `${room.grammar}|${room.task}`;
+    const pool = QUESTION_POOLS[key] || [];
+    if (pool.length === 0) throw new Error(`No questions available for "${key}".`);
     room.questions = shuffleArray(pool).slice(0, room.questionCount);
     room.duration  = room.timerOn ? room.questionCount * 6000 : null;
 
@@ -236,15 +237,19 @@ function submitWord(roomId, socketId, word) {
 }
 
 /**
- * Validate and record a Multichoice answer.
- * Returns { correct, correctAnswers, finished }.
+ * Validate and record an answer for Multichoice or Gap Fill multiplayer.
+ * Both modes use the same slash-separated answer format
+ * (e.g. "to study/studying" → matches either).
+ * Returns { correct, correctAnswers, finished, score }.
  * Throws if room not found, not playing, or wrong gameMode.
  */
 function submitAnswer(roomId, socketId, questionIndex, answer) {
   const room = rooms.get(roomId);
   if (!room)                      throw new Error('Room not found.');
   if (room.status !== 'playing')  throw new Error('No game in progress.');
-  if (room.gameMode !== 'multichoice') throw new Error('Not a Multichoice room.');
+  if (!['multichoice', 'gapfill'].includes(room.gameMode)) {
+    throw new Error('Not a question-based room.');
+  }
 
   const player = room.players.find(p => p.socketId === socketId);
   if (!player) throw new Error('Player not in room.');
@@ -252,8 +257,11 @@ function submitAnswer(roomId, socketId, questionIndex, answer) {
   const q = room.questions[questionIndex];
   if (!q)  throw new Error('Invalid question index.');
 
+  // Case-insensitive comparison: Gap Fill players type the answer, so case may differ.
+  // Multichoice options are already lowercase so this is a no-op for that mode.
   const correctAnswers = q.answer.split('/').map(s => s.trim());
-  const correct        = correctAnswers.includes((answer || '').trim());
+  const typed          = (answer || '').trim().toLowerCase();
+  const correct        = correctAnswers.some(a => a.toLowerCase() === typed);
 
   if (correct) player.score += 1;
   player.answeredCount = (player.answeredCount || 0) + 1;
@@ -284,8 +292,8 @@ function endGame(roomId) {
   if (!room) return null;
   room.status = 'ended';
 
-  // Apply time bonuses for Multichoice timed rounds
-  if (room.gameMode === 'multichoice' && room.timerOn && room.startTime && room.duration) {
+  // Apply time bonuses for Multichoice / Gap Fill timed rounds
+  if (['multichoice', 'gapfill'].includes(room.gameMode) && room.timerOn && room.startTime && room.duration) {
     const roundEnd = room.startTime + room.duration;
     for (const p of room.players) {
       if (p.finishTime && p.finishTime < roundEnd) {

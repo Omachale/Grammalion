@@ -1,58 +1,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // A2 Present Simple – Subject–Verb Agreement
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// Six question pools (multiChoice, multiChoiceVerbPatterns, gapFill,
+// gapFillContinuous, gapFillPast, gapFillVerbPatterns) live in the shared
+// JSON file below so both client and server consume the same source.
+// Edit `./questions.json` to change them.
+import questionData from './questions.json';
 
 /** Gap-fill sentences: verb removed, shown in parentheses. Used in Gap Fill mode. */
-export const gapFill = [
-  { prompt: "My brother _____ (play) football every Saturday.",                     answer: "plays"   },
-  { prompt: "The students _____ (study) English after lunch.",                       answer: "study"   },
-  { prompt: "She _____ (walk) to school with her friend.",                           answer: "walks"   },
-  { prompt: "The dog _____ (sleep) under the table.",                                answer: "sleeps"  },
-  { prompt: "My parents _____ (work) in an office near the city centre.",            answer: "work"    },
-  { prompt: "The teacher _____ (give) us homework every day.",                       answer: "gives"   },
-  { prompt: "Tom and Jerry _____ (watch) cartoons in the evening.",                  answer: "watch"   },
-  { prompt: "The baby _____ (cry) when she is hungry.",                              answer: "cries"   },
-  { prompt: "Our neighbours _____ (have) a big garden.",                             answer: "have"    },
-  { prompt: "The bus _____ (stop) near my house every morning.",                     answer: "stops"   },
-  { prompt: "My sister _____ (like) chocolate ice cream.",                           answer: "likes"   },
-  { prompt: "The children _____ (run) in the playground during break time.",         answer: "run"     },
-  { prompt: "His father _____ (drive) to work very early.",                          answer: "drives"  },
-  { prompt: "The cats _____ (sit) on the wall in the afternoon.",                    answer: "sit"     },
-  { prompt: "My best friend _____ (live) near the library.",                         answer: "lives"   },
-  { prompt: "The shops _____ (open) at nine o'clock.",                               answer: "open"    },
-  { prompt: "The sun _____ (rise) in the east.",                                     answer: "rises"   },
-  { prompt: "Our class _____ (start) at eight thirty.",                              answer: "starts"  },
-  { prompt: "My cousins _____ (visit) us on Sundays.",                               answer: "visit"   },
-  { prompt: "The boy with the red backpack _____ (carry) a heavy bag to school.",    answer: "carries" },
-];
+export const gapFill = questionData.gapFill;
 
 /**
  * Multiple-choice sentences: verb slot shows the infinitive as a hint.
  * options: always [base/plural form, third-person-singular form]
  * answer: the correct choice
  */
-export const multiChoice = [
-  { prompt: "My brother _____ football every Saturday.",                     hint: "play",  options: ["play",  "plays"],   answer: "plays"   },
-  { prompt: "The students _____ English after lunch.",                       hint: "study", options: ["study", "studies"], answer: "study"   },
-  { prompt: "She _____ to school with her friend.",                          hint: "walk",  options: ["walk",  "walks"],   answer: "walks"   },
-  { prompt: "The dog _____ under the table.",                                hint: "sleep", options: ["sleep", "sleeps"],  answer: "sleeps"  },
-  { prompt: "My parents _____ in an office near the city centre.",           hint: "work",  options: ["work",  "works"],   answer: "work"    },
-  { prompt: "The teacher _____ us homework every day.",                      hint: "give",  options: ["give",  "gives"],   answer: "gives"   },
-  { prompt: "Tom and Jerry _____ cartoons in the evening.",                  hint: "watch", options: ["watch", "watches"], answer: "watch"   },
-  { prompt: "The baby _____ when she is hungry.",                            hint: "cry",   options: ["cry",   "cries"],   answer: "cries"   },
-  { prompt: "Our neighbours _____ a big garden.",                            hint: "have",  options: ["have",  "has"],     answer: "have"    },
-  { prompt: "The bus _____ near my house every morning.",                    hint: "stop",  options: ["stop",  "stops"],   answer: "stops"   },
-  { prompt: "My sister _____ chocolate ice cream.",                          hint: "like",  options: ["like",  "likes"],   answer: "likes"   },
-  { prompt: "The children _____ in the playground during break time.",       hint: "run",   options: ["run",   "runs"],    answer: "run"     },
-  { prompt: "His father _____ to work very early.",                          hint: "drive", options: ["drive", "drives"],  answer: "drives"  },
-  { prompt: "The cats _____ on the wall in the afternoon.",                  hint: "sit",   options: ["sit",   "sits"],    answer: "sit"     },
-  { prompt: "My best friend _____ near the library.",                        hint: "live",  options: ["live",  "lives"],   answer: "lives"   },
-  { prompt: "The shops _____ at nine o'clock.",                              hint: "open",  options: ["open",  "opens"],   answer: "open"    },
-  { prompt: "The sun _____ in the east.",                                    hint: "rise",  options: ["rise",  "rises"],   answer: "rises"   },
-  { prompt: "Our class _____ at eight thirty.",                              hint: "start", options: ["start", "starts"],  answer: "starts"  },
-  { prompt: "My cousins _____ us on Sundays.",                               hint: "visit", options: ["visit", "visits"],  answer: "visit"   },
-  { prompt: "The boy with the red backpack _____ a heavy bag to school.",    hint: "carry", options: ["carry", "carries"], answer: "carries" },
-];
+export const multiChoice = questionData.multiChoice;
 
 /** Sentences with deliberate subject–verb agreement mistakes. Used in Correction mode. */
 export const correctionSentences = [
@@ -160,56 +124,14 @@ export const correctSentencesPresentSimple = [
  * Only the main verb is removed; regular -ed forms plus the irregular "shone".
  * answer = past simple form of the verb.
  */
-export const gapFillPast = [
-  { prompt: "I ________ (watch) a film last night.",                          answer: "watched"  },
-  { prompt: "She ________ (visit) her grandmother on Sunday.",                answer: "visited"  },
-  { prompt: "They ________ (play) football after school.",                    answer: "played"   },
-  { prompt: "The teacher ________ (explain) the homework clearly.",           answer: "explained" },
-  { prompt: "We ________ (walk) to the park yesterday.",                      answer: "walked"   },
-  { prompt: "My dad ________ (fix) the broken chair.",                        answer: "fixed"    },
-  { prompt: "The children ________ (laugh) at the funny story.",              answer: "laughed"  },
-  { prompt: "He ________ (wash) his car in the morning.",                     answer: "washed"   },
-  { prompt: "Tom and his sister ________ (help) their mum in the kitchen.",   answer: "helped"   },
-  { prompt: "The dog ________ (chase) the ball across the yard.",             answer: "chased"   },
-  { prompt: "I ________ (finish) my homework before dinner.",                 answer: "finished" },
-  { prompt: "The students ________ (answer) the questions quickly.",          answer: "answered" },
-  { prompt: "My friend ________ (open) the window because it was hot.",       answer: "opened"   },
-  { prompt: "The baby ________ (cry) loudly during the night.",               answer: "cried"    },
-  { prompt: "We ________ (visit) the museum last weekend.",                   answer: "visited"  },
-  { prompt: "The sun ________ (shine) brightly all day.",                     answer: "shone"    },
-  { prompt: "My parents ________ (cook) a big meal for the family.",          answer: "cooked"   },
-  { prompt: "She ________ (carry) her books to the classroom.",               answer: "carried"  },
-  { prompt: "The boys ________ (jump) over the puddle.",                      answer: "jumped"   },
-  { prompt: "Our class ________ (start) the lesson at nine o'clock.",         answer: "started"  },
-];
+export const gapFillPast = questionData.gapFillPast;
 
 /**
  * Gap-fill sentences for Present Continuous.
  * The auxiliary AND main verb are removed; the infinitive is shown in parentheses.
  * answer = full present-continuous form (auxiliary + -ing verb).
  */
-export const gapFillContinuous = [
-  { prompt: "I ________ (read) a book right now.",                      answer: "am reading"   },
-  { prompt: "She ________ (talk) on the phone at the moment.",          answer: "is talking"   },
-  { prompt: "They ________ (play) football in the park.",               answer: "are playing"  },
-  { prompt: "The teacher ________ (write) on the board.",               answer: "is writing"   },
-  { prompt: "We ________ (watch) a film together.",                     answer: "are watching" },
-  { prompt: "My mum ________ (cook) dinner in the kitchen.",            answer: "is cooking"   },
-  { prompt: "The children ________ (draw) pictures in class.",          answer: "are drawing"  },
-  { prompt: "He ________ (listen) to music with his headphones.",       answer: "is listening" },
-  { prompt: "Tom and his brother ________ (clean) their room.",         answer: "are cleaning" },
-  { prompt: "The dog ________ (bark) at the cat.",                      answer: "is barking"   },
-  { prompt: "I ________ (wait) for the bus outside.",                   answer: "am waiting"   },
-  { prompt: "The students ________ (work) on their homework.",          answer: "are working"  },
-  { prompt: "My friend ________ (wear) a blue jacket today.",           answer: "is wearing"   },
-  { prompt: "The baby ________ (sleep) in the bedroom.",                answer: "is sleeping"  },
-  { prompt: "We ________ (learn) new words in English class.",          answer: "are learning" },
-  { prompt: "The sun ________ (shine) brightly today.",                 answer: "is shining"   },
-  { prompt: "My parents ________ (talk) to our neighbours.",            answer: "are talking"  },
-  { prompt: "She ________ (carry) a heavy bag.",                        answer: "is carrying"  },
-  { prompt: "The boys ________ (run) around the playground.",           answer: "are running"  },
-  { prompt: "Our class ________ (do) a listening exercise now.",        answer: "is doing"     },
-];
+export const gapFillContinuous = questionData.gapFillContinuous;
 
 /**
  * Correction-mode sentences: deliberately wrong verb form.
@@ -704,112 +626,10 @@ export const wheelWrongByGrammar = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Gap-fill: blank immediately followed by (infinitive) hint. Used in Gap Fill mode. */
-export const gapFillVerbPatterns = [
-  { prompt: "My sister agreed _____ (wash) the dishes.",                            answer: "to wash"         },
-  { prompt: "They decided _____ (leave) early in the morning.",                     answer: "to leave"        },
-  { prompt: "I hope _____ (see) you again soon.",                                   answer: "to see"          },
-  { prompt: "We planned _____ (visit) our grandparents last weekend.",              answer: "to visit"        },
-  { prompt: "He wants _____ (buy) a new bike.",                                     answer: "to buy"          },
-  { prompt: "She promised _____ (help) me with my homework.",                       answer: "to help"         },
-  { prompt: "I forgot _____ (lock) the door last night.",                           answer: "to lock"         },
-  { prompt: "Please remember _____ (bring) your book tomorrow.",                   answer: "to bring"        },
-  { prompt: "They managed _____ (finish) the project on time.",                    answer: "to finish"       },
-  { prompt: "We expect _____ (arrive) before lunch.",                              answer: "to arrive"       },
-  { prompt: "I enjoy _____ (play) football after school.",                         answer: "playing"         },
-  { prompt: "She avoided _____ (talk) to the angry customer.",                     answer: "talking"         },
-  { prompt: "He kept _____ (ask) the same question again and again.",              answer: "asking"          },
-  { prompt: "They suggested _____ (watch) a movie tonight.",                       answer: "watching"        },
-  { prompt: "I miss _____ (see) my old friends.",                                  answer: "seeing"          },
-  { prompt: "She practised _____ (speak) English every day.",                      answer: "speaking"        },
-  { prompt: "The teacher asked us _____ (open) our books.",                        answer: "to open"         },
-  { prompt: "My mum told me _____ (clean) my room.",                              answer: "to clean"        },
-  { prompt: "They invited us _____ (join) them for dinner.",                       answer: "to join"         },
-  { prompt: "He reminded me _____ (call) my grandmother.",                        answer: "to call"         },
-  { prompt: "The coach encouraged us _____ (try) again.",                         answer: "to try"          },
-  { prompt: "She warned him _____ (be) careful on the road.",                     answer: "to be"           },
-  { prompt: "He gave up _____ (smoke) last year.",                                answer: "smoking"         },
-  { prompt: "We carried on _____ (work) after lunch.",                            answer: "working"         },
-  { prompt: "I feel like _____ (eat) something sweet.",                           answer: "eating"          },
-  { prompt: "She refused _____ (answer) the question.",                           answer: "to answer"       },
-  { prompt: "I offered _____ (carry) her bags to the car.",                       answer: "to carry"        },
-  { prompt: "He learned _____ (swim) when he was five.",                          answer: "to swim"         },
-  { prompt: "They tried _____ (fix) the broken chair.",                           answer: "to fix"          },
-  { prompt: "We need _____ (leave) before it gets dark.",                         answer: "to leave"        },
-  { prompt: "She considered _____ (move) to another city.",                       answer: "moving"          },
-  { prompt: "Would you mind _____ (close) the window?",                           answer: "closing"         },
-  { prompt: "He spent two hours _____ (clean) his room.",                         answer: "cleaning"        },
-  { prompt: "They finished _____ (paint) the house yesterday.",                   answer: "painting"        },
-  { prompt: "Please stop _____ (make) so much noise.",                            answer: "making"          },
-  { prompt: "We began _____ (study) for the test after dinner.",                  answer: "to study/studying" },
-  { prompt: "She continued _____ (talk) even after the bell rang.",               answer: "to talk/talking"   },
-  { prompt: "I prefer _____ (walk) to school when the weather is nice.",          answer: "to walk/walking"   },
-  { prompt: "They started _____ (build) a new bridge last year.",                 answer: "to build/building" },
-  { prompt: "He likes _____ (read) before going to bed.",                         answer: "to read/reading"   },
-  { prompt: "She loves _____ (listen) to music in the evening.",                  answer: "to listen/listening" },
-  { prompt: "I hate _____ (wake) up early on Sundays.",                           answer: "to wake/waking"    },
-  { prompt: "The teacher helped us _____ (understand) the problem.",              answer: "to understand/understand" },
-  { prompt: "She wanted me _____ (stay) a little longer.",                        answer: "to stay"         },
-  { prompt: "They needed us _____ (finish) the work today.",                      answer: "to finish"       },
-  { prompt: "He encouraged his friend _____ (apply) for the job.",               answer: "to apply"        },
-  { prompt: "I reminded her _____ (send) the email.",                            answer: "to send"         },
-  { prompt: "The coach taught us _____ (pass) the ball quickly.",                answer: "to pass"         },
-  { prompt: "She warned them _____ (stay) away from the dog.",                   answer: "to stay"         },
-  { prompt: "He ended up _____ (work) late again.",                              answer: "working"         },
-];
+export const gapFillVerbPatterns = questionData.gapFillVerbPatterns;
 
 /**
  * Multiple-choice: 3 options per question (to-infinitive / bare infinitive / gerund).
  * answer may be slash-separated when both to-infinitive and gerund are equally correct.
  */
-export const multiChoiceVerbPatterns = [
-  { prompt: "My sister agreed _____ the dishes.",                          hint: "wash",       options: ["to wash",       "wash",       "washing"      ], answer: "to wash"          },
-  { prompt: "They decided _____ early in the morning.",                   hint: "leave",      options: ["to leave",      "leave",      "leaving"      ], answer: "to leave"         },
-  { prompt: "I hope _____ you again soon.",                               hint: "see",        options: ["to see",        "see",        "seeing"       ], answer: "to see"           },
-  { prompt: "We planned _____ our grandparents last weekend.",            hint: "visit",      options: ["to visit",      "visit",      "visiting"     ], answer: "to visit"         },
-  { prompt: "He wants _____ a new bike.",                                 hint: "buy",        options: ["to buy",        "buy",        "buying"       ], answer: "to buy"           },
-  { prompt: "She promised _____ me with my homework.",                    hint: "help",       options: ["to help",       "help",       "helping"      ], answer: "to help"          },
-  { prompt: "I forgot _____ the door last night.",                        hint: "lock",       options: ["to lock",       "lock",       "locking"      ], answer: "to lock"          },
-  { prompt: "Please remember _____ your book tomorrow.",                  hint: "bring",      options: ["to bring",      "bring",      "bringing"     ], answer: "to bring"         },
-  { prompt: "They managed _____ the project on time.",                    hint: "finish",     options: ["to finish",     "finish",     "finishing"    ], answer: "to finish"        },
-  { prompt: "We expect _____ before lunch.",                              hint: "arrive",     options: ["to arrive",     "arrive",     "arriving"     ], answer: "to arrive"        },
-  { prompt: "I enjoy _____ football after school.",                       hint: "play",       options: ["to play",       "play",       "playing"      ], answer: "playing"          },
-  { prompt: "She avoided _____ to the angry customer.",                   hint: "talk",       options: ["to talk",       "talk",       "talking"      ], answer: "talking"          },
-  { prompt: "He kept _____ the same question again and again.",           hint: "ask",        options: ["to ask",        "ask",        "asking"       ], answer: "asking"           },
-  { prompt: "They suggested _____ a movie tonight.",                      hint: "watch",      options: ["to watch",      "watch",      "watching"     ], answer: "watching"         },
-  { prompt: "I miss _____ my old friends.",                               hint: "see",        options: ["to see",        "see",        "seeing"       ], answer: "seeing"           },
-  { prompt: "She practised _____ English every day.",                     hint: "speak",      options: ["to speak",      "speak",      "speaking"     ], answer: "speaking"         },
-  { prompt: "The teacher asked us _____ our books.",                      hint: "open",       options: ["to open",       "open",       "opening"      ], answer: "to open"          },
-  { prompt: "My mum told me _____ my room.",                             hint: "clean",      options: ["to clean",      "clean",      "cleaning"     ], answer: "to clean"         },
-  { prompt: "They invited us _____ them for dinner.",                     hint: "join",       options: ["to join",       "join",       "joining"      ], answer: "to join"          },
-  { prompt: "He reminded me _____ my grandmother.",                      hint: "call",       options: ["to call",       "call",       "calling"      ], answer: "to call"          },
-  { prompt: "The coach encouraged us _____ again.",                      hint: "try",        options: ["to try",        "try",        "trying"       ], answer: "to try"           },
-  { prompt: "She warned him _____ careful on the road.",                 hint: "be",         options: ["to be",         "be",         "being"        ], answer: "to be"            },
-  { prompt: "He gave up _____ last year.",                               hint: "smoke",      options: ["to smoke",      "smoke",      "smoking"      ], answer: "smoking"          },
-  { prompt: "We carried on _____ after lunch.",                          hint: "work",       options: ["to work",       "work",       "working"      ], answer: "working"          },
-  { prompt: "I feel like _____ something sweet.",                        hint: "eat",        options: ["to eat",        "eat",        "eating"       ], answer: "eating"           },
-  { prompt: "She refused _____ the question.",                           hint: "answer",     options: ["to answer",     "answer",     "answering"    ], answer: "to answer"        },
-  { prompt: "I offered _____ her bags to the car.",                      hint: "carry",      options: ["to carry",      "carry",      "carrying"     ], answer: "to carry"         },
-  { prompt: "He learned _____ when he was five.",                        hint: "swim",       options: ["to swim",       "swim",       "swimming"     ], answer: "to swim"          },
-  { prompt: "They tried _____ the broken chair.",                        hint: "fix",        options: ["to fix",        "fix",        "fixing"       ], answer: "to fix"           },
-  { prompt: "We need _____ before it gets dark.",                        hint: "leave",      options: ["to leave",      "leave",      "leaving"      ], answer: "to leave"         },
-  { prompt: "She considered _____ to another city.",                     hint: "move",       options: ["to move",       "move",       "moving"       ], answer: "moving"           },
-  { prompt: "Would you mind _____ the window?",                          hint: "close",      options: ["to close",      "close",      "closing"      ], answer: "closing"          },
-  { prompt: "He spent two hours _____ his room.",                        hint: "clean",      options: ["to clean",      "clean",      "cleaning"     ], answer: "cleaning"         },
-  { prompt: "They finished _____ the house yesterday.",                  hint: "paint",      options: ["to paint",      "paint",      "painting"     ], answer: "painting"         },
-  { prompt: "Please stop _____ so much noise.",                          hint: "make",       options: ["to make",       "make",       "making"       ], answer: "making"           },
-  { prompt: "We began _____ for the test after dinner.",                 hint: "study",      options: ["to study",      "study",      "studying"     ], answer: "to study/studying"  },
-  { prompt: "She continued _____ even after the bell rang.",             hint: "talk",       options: ["to talk",       "talk",       "talking"      ], answer: "to talk/talking"    },
-  { prompt: "I prefer _____ to school when the weather is nice.",        hint: "walk",       options: ["to walk",       "walk",       "walking"      ], answer: "to walk/walking"    },
-  { prompt: "They started _____ a new bridge last year.",                hint: "build",      options: ["to build",      "build",      "building"     ], answer: "to build/building"  },
-  { prompt: "He likes _____ before going to bed.",                       hint: "read",       options: ["to read",       "read",       "reading"      ], answer: "to read/reading"    },
-  { prompt: "She loves _____ to music in the evening.",                  hint: "listen",     options: ["to listen",     "listen",     "listening"    ], answer: "to listen/listening"},
-  { prompt: "I hate _____ up early on Sundays.",                         hint: "wake",       options: ["to wake",       "wake",       "waking"       ], answer: "to wake/waking"     },
-  { prompt: "The teacher helped us _____ the problem.",                  hint: "understand", options: ["to understand", "understand", "understanding"], answer: "to understand/understand" },
-  { prompt: "She wanted me _____ a little longer.",                      hint: "stay",       options: ["to stay",       "stay",       "staying"      ], answer: "to stay"          },
-  { prompt: "They needed us _____ the work today.",                      hint: "finish",     options: ["to finish",     "finish",     "finishing"    ], answer: "to finish"        },
-  { prompt: "He encouraged his friend _____ for the job.",              hint: "apply",      options: ["to apply",      "apply",      "applying"     ], answer: "to apply"         },
-  { prompt: "I reminded her _____ the email.",                          hint: "send",       options: ["to send",       "send",       "sending"      ], answer: "to send"          },
-  { prompt: "The coach taught us _____ the ball quickly.",              hint: "pass",       options: ["to pass",       "pass",       "passing"      ], answer: "to pass"          },
-  { prompt: "She warned them _____ away from the dog.",                 hint: "stay",       options: ["to stay",       "stay",       "staying"      ], answer: "to stay"          },
-  { prompt: "He ended up _____ late again.",                            hint: "work",       options: ["to work",       "work",       "working"      ], answer: "working"          },
-];
+export const multiChoiceVerbPatterns = questionData.multiChoiceVerbPatterns;

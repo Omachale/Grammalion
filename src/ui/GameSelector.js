@@ -251,6 +251,11 @@ export default class GameSelector {
   /**
    * Update dial states (options / disabled) to match current selections.
    * Never fires the external onChange — callers decide when to notify.
+   *
+   * Note: Dials are never disabled — players should always be able to rotate
+   * any dial. The Start button's enabled/disabled state provides all the
+   * feedback needed for compatibility. When grammar is Juggle, the task value
+   * is simply ignored (Juggle is always valid).
    */
   _checkCompatibility() {
     const { grammar, task } = this._selections;
@@ -268,13 +273,11 @@ export default class GameSelector {
       this._selections.rounds = this.roundsDial.getValue();
     }
 
+    // When grammar is Juggle, task is not applicable, but we don't disable the
+    // dial — players can rotate it freely. It's simply ignored.
     if (isJuggle) {
-      this.taskDial.setDisabled(true);
       return;
     }
-
-    const valid = (COMPATIBLE[grammar] || new Set()).has(task);
-    this.taskDial.setDisabled(!valid);
 
     const isWheel = task === 'Wheel';
     if (isWheel !== this._roundsInWheelMode) {

@@ -8,6 +8,7 @@ const MC_POOLS = {
   'Verb Patterns':  multiChoiceVerbPatterns,
 };
 import PowerBar from '../ui/PowerBar';
+import MultiplayerHUD from '../ui/MultiplayerHUD';
 import { startCountdown } from '../ui/countdown';
 import { POWER_BAR_X, POWER_BAR_Y, POWER_BAR_SCALE, MENU_BTN_X, MENU_BTN_Y, MENU_BTN_SCALE } from '../ui/gameScreenLayout';
 
@@ -79,11 +80,20 @@ export default class MultiChoiceScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('menu-btn', 'assets/images/game/Menu.png');
+    this.load.image('menu-btn',  'assets/images/game/Menu.png');
+    this.load.image('display4',  'assets/images/game/Display4.png');
     PowerBar.preload(this);
   }
 
   create() {
+    const cw = this.cameras.main.width;
+    const ch = this.cameras.main.height;
+
+    // ── Background: Display4 (self-contained so this scene works with or without GameBeamScene) ──
+    const displayFrame = this.textures.getFrame('display4');
+    const displayScale = Math.min(cw / displayFrame.realWidth, ch / displayFrame.realHeight);
+    this.add.image(cw / 2, ch / 2, 'display4').setScale(displayScale);
+
     // ── Game state ──────────────────────────────────────────────────────────
     this._correct       = 0;
     this._wrong         = 0;
@@ -162,6 +172,7 @@ export default class MultiChoiceScene extends Phaser.Scene {
       this._powerBar.destroy();
       this.scene.stop('ScanLineScene');
       if (this._isMultiplayer) {
+        this._hud?.destroy();
         ['answerResult', 'scoreUpdate', 'roundEnd'].forEach(e => socketClient.offAll(e));
       }
     });
@@ -203,55 +214,13 @@ export default class MultiChoiceScene extends Phaser.Scene {
   // ─── Multiplayer UI ───────────────────────────────────────────────────────
 
   _createMultiplayerUI() {
-    // ── Countdown timer (top-centre) ─────────────────────────────────────────
-    if (this._duration) {
-      this._timerText = this.add.text(GAME_CENTER_X, 80, '', {
-        fontFamily:      "'Syncopate', monospace",
-        fontSize:        '48px',
-        fontStyle:       'bold',
-        color:           '#48C1C0',
-        stroke:          '#000000',
-        strokeThickness: 5,
-      }).setOrigin(0.5, 0.5);
-    }
-
-    // ── Scoreboard panel (left column) ───────────────────────────────────────
-    const n    = Math.min(this._players.length, 4);
-    const panH = n * SCORE_ROW + 50;
-    const panY = SCORE_Y0 + (n - 1) * SCORE_ROW / 2;
-
-    this.add.rectangle(SCORE_CX, panY, 220, panH, 0x060c14)
-      .setStrokeStyle(1, 0x2a6a6a, 0.9);
-
-    this.add.text(SCORE_CX, SCORE_Y0 - 26, 'SCORES', {
-      fontFamily:    'monospace',
-      fontSize:      '10px',
-      color:         '#2a6a6a',
-      letterSpacing: 3,
-    }).setOrigin(0.5, 0.5);
-
-    this._scoreTexts = [];
-    for (let i = 0; i < n; i++) {
-      this._scoreTexts.push(
-        this.add.text(SCORE_CX, SCORE_Y0 + i * SCORE_ROW, '', {
-          fontFamily: "'Syncopate', monospace",
-          fontSize:   '13px',
-          fontStyle:  'bold',
-          color:      '#48C1C0',
-        }).setOrigin(0.5, 0.5)
-      );
-    }
-
-    this._updateScoreboard();
-  }
-
-  _updateScoreboard() {
-    if (!this._scoreTexts) return;
-    const sorted = [...this._players].sort((a, b) => b.score - a.score);
-    sorted.slice(0, 4).forEach((p, i) => {
-      const isMe  = p.playerName === this._playerName;
-      const label = (isMe ? '▶ ' : '  ') + p.playerName + ':  ' + p.score;
-      this._scoreTexts[i]?.setText(label).setColor(isMe ? '#88ffff' : '#48C1C0');
+    this._hud = new MultiplayerHUD(this, {
+      players:    this._players,
+      playerName: this._playerName,
+      duration:   this._duration,
+      startTime:  this._startTime,
+      timer:      { x: GAME_CENTER_X, y: 80 },
+      scoreboard: { cx: SCORE_CX, y0: SCORE_Y0, rowSpacing: SCORE_ROW, panelWidth: 220 },
     });
   }
 
@@ -284,7 +253,9 @@ export default class MultiChoiceScene extends Phaser.Scene {
       this.time.delayedCall(1200, () => {
         this._questionIndex++;
         if (this._questionIndex >= this._rounds) {
-          this._showInterimScreen();
+          // Guard: if roundEnd arrived during the 1200ms feedback delay,
+          // the victory screen is already showing — don't draw interim on top.
+          if (!this._roundEnded) this._showInterimScreen();
         } else {
           this._showQuestion();
         }
@@ -293,14 +264,13 @@ export default class MultiChoiceScene extends Phaser.Scene {
 
     // Another player's score changed
     socketClient.on('scoreUpdate', (data) => {
-      const p = this._players.find(pl => pl.playerName === data.playerName);
-      if (p) p.score = data.score;
-      this._updateScoreboard();
+      this._hud?.setScore(data.playerName, data.score);
     });
 
     // Round over — server has applied time bonuses and sent final scores
     socketClient.on('roundEnd', (data) => {
       this._roundEnded = true;
+      this._hud?.setRoundEnded();
       this._showVictoryScreen(data.scores);
     });
   }
@@ -660,17 +630,9 @@ export default class MultiChoiceScene extends Phaser.Scene {
   // ─── Game loop ────────────────────────────────────────────────────────────
 
   update() {
-    // ── Multiplayer: drive round-level countdown timer ────────────────────────
+    // ── Multiplayer: drive round-level countdown timer via shared HUD ─────────
     if (this._isMultiplayer) {
-      if (!this._roundEnded && this._startTime && this._duration && this._timerText) {
-        const remaining = Math.max(0, this._startTime + this._duration - Date.now());
-        const secs      = Math.ceil(remaining / 1000);
-        this._timerText.setText(String(secs));
-        const pct = remaining / this._duration;
-        if      (pct < 0.2) this._timerText.setColor('#CC3344');
-        else if (pct < 0.5) this._timerText.setColor('#D4A017');
-        else                this._timerText.setColor('#48C1C0');
-      }
+      this._hud?.update();
       return;
     }
 

@@ -98,10 +98,10 @@ io.on('connection', (socket) => {
 
       const result = startGame(roomId);
 
-      if (room.gameMode === 'multichoice') {
+      if (room.gameMode === 'multichoice' || room.gameMode === 'gapfill') {
         const { questions, duration, startTime } = result;
         io.to(roomId).emit('roundStart', { questions, duration, startTime, gameMode: room.gameMode });
-        console.log(`[game] Room ${roomId} started — multichoice (${room.questionCount}q, timerOn=${room.timerOn})`);
+        console.log(`[game] Room ${roomId} started — ${room.gameMode} (${room.grammar}/${room.task}, ${room.questionCount}q, timerOn=${room.timerOn})`);
         // Only set timer if it's a timed round
         if (duration) setTimeout(() => endRound(roomId), duration);
       } else {

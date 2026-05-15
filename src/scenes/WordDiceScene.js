@@ -32,7 +32,7 @@ export default class WordDiceScene extends Phaser.Scene {
 
   preload() {
     // Test: load the background to verify asset loading works
-    this.load.image('test-bg', 'assets/images/game/Background UI.png');
+    this.load.image('test-bg', 'assets/images/game/Background UI.webp');
 
     // Load each die image pair explicitly
     this.load.image('die-A-red',   'assets/images/dice/AR.png');
